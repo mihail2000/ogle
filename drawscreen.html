@@ -2,13 +2,21 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    <script data-main="javascripts/drawmain" src="javascripts/require-jquery.js"></script>
+  
+    <!-- 
+  
     <script type="text/javascript" src="javascripts/jquery-1.8.0.min.js"></script>
+    
+    !-->
     <script type="text/javascript" src="javascripts/jquery-ui-1.8.23.custom.min.js"></script>
     <script type="text/javascript" src="javascripts/kineticjs-4.0.1.js"></script>
+    <!-- 
+
     <script type="text/javascript" src="javascripts/modernizr.custom.90822.js"></script>
     <script type="text/javascript" src="javascripts/coffee-script.js"></script>
-    <script type="text/javascript" src="javascripts/dropbox.js"></script>
-    <script type="text/javascript" src="javascripts/less.js"></script>    
+    <script type="text/javascript" src="javascripts/dropbox.js"></script> 
+    <script type="text/javascript" src="javascripts/less.js"></script>    !-->
     <link type="text/css" rel="Stylesheet" href="stylesheets/jquery-ui-1.8.23.custom.css">
 
     <style>
@@ -17,7 +25,6 @@
       h3 { color:#11aa00; font-family:"Sans-serif", Verdana, Arial; font-weight:normal; }
       p { color:#000000; font-family:"Sans-serif", Verdana, Arial; line-height:50%; }
     </style>
-    
     <script>      
       $(document).keydown(function(e) {
       if (e.keyCode === 8) {
@@ -29,32 +36,10 @@
     });
     </script>
    </head>
-
   <body onSelectStart="this.style.cursor='not-allowed'; return false;"onMouseup="this.style.cursor='default'">
-    <div id="container"></div>
-    <div id="radio">
-      <table id="buttontable" border="0" width="800"><tr>
-        
-        <script type='text/javascript'>
-          var toolbutton_ids = ['select', 'move', 'rect', 'arrow', 'settext', 'delete', 'load', 'save'];
-          var toolbutton_labels = ['Select', 'Move', 'Rect', 'Arrow', 'Text', 'Delete', 'Load', 'Save'];
-          
-          for (var i = 0; i < toolbutton_ids.length; i++) {
-            console.log(toolbutton_labels[i]);
-            $('#buttontable')
-            .append('<th width="50"><input type="radio" id="radio' + (+i + 1) + '" name="radio" value="' + toolbutton_ids[i] + '" /><label for="radio' + (+i + 1) + '">' + toolbutton_labels[i] + '</label></th>');
-          }
-        </script>
-        </tr>
-      </table>
-    </div>
-
    <script>
     
 'use strict'
-  $(function() {
-      $( "#radio" ).buttonset();
-  });
 var TOOL_SELECT = 'select';
 var TOOL_MOVE = 'move';
 var TOOL_RECT = 'rect';
@@ -77,9 +62,6 @@ var draw_end_x = 0;
 var draw_end_y = 0;
 
 var statestartx = 200;
-var layer = new Kinetic.Layer();
-var templayer = new Kinetic.Layer();
-var popup_menu_layer = new Kinetic.Layer();
 
 var latestitem;
 var currentTool = TOOL_RECT;
@@ -87,10 +69,14 @@ var currentTool = TOOL_RECT;
 var cursorVisible = false;
 var cursorTimerID = 0;
 
-// Shape XML handler
+/*
+ * XML_handler
+ *
+ * This class is used save diagrams as XML files and load diagrams from XML files.
+ */
 var XML_handler = {
   get_header_XML: function() {
-    var str = '<shapes>\n';
+    var str = '<?xml version="1.0" encoding="utf-8"?>\n<shapes>\n';
     return str;
   },
   get_footer_XML: function() {
@@ -195,7 +181,6 @@ var XML_handler = {
   }
   
 };
-
 // Drop box handler
 var dropbox_handler = {
   authenticated: false,
@@ -255,16 +240,8 @@ var dropbox_handler = {
         // Tell the user an error occurred, ask them to refresh the page.
       }    
   },
-  LoadContents: function(filename) {
-    var status = this.client.readFile('jsmapper_1.xml', function(error, data){
-      if (error) {
-        return dropbox_handler.DropBoxError(error);  // Something went wrong.
-      } else {
-        dropbox_handler.file_data = data;
-      }
-      
-    });    
-    
+  LoadContents: function(filename, callback) {
+    var status = this.client.readFile(filename, callback);    
   },
   SaveContents: function(kineticLayer) {
     var writeToFile = XML_handler.get_header_XML();
@@ -278,7 +255,7 @@ var dropbox_handler = {
     }
     
     writeToFile += XML_handler.get_footer_XML();
-    this.client.writeFile("jsmapper_1.xml", writeToFile, function(error, stat) {
+    this.client.writeFile("jsmapper_2.xml", writeToFile, function(error, stat) {
         if (error) {
           return dropbox_handler.showError(error);  // Something went wrong.
         }  
@@ -396,47 +373,54 @@ var popup_menu = {
     }
 };
 
+function loadFile(filename) {
+  dropbox_handler.LoadContents(filename, function(error, data) {
+    $(data).find('shape').each(function () {
+      switch ($(this).attr('type')) {
+        case TOOL_RECT:
+          {
+            console.log('RECT');
+            var x = parseInt($(this).attr('x'));
+            var y = parseInt($(this).attr('y'));
+            var width = parseInt($(this).attr('width'));
+            var height = parseInt($(this).attr('height'));
+            
+            var text = '';
+            if ($(this).text() != '') {
+              text = $(this).text();
+            }
+  
+            drawRectElement(layer, x, y, x + width, y + height, text);
+            
+            break;
+          }
+        
+        case TOOL_ARROW:
+          {
+            console.log('ARROW');
+            var points = [];
+            
+            $(this).find('coord').each(function () {
+              points.push(parseInt($(this).attr('x')));
+              points.push(parseInt($(this).attr('y')));
+            });
+            
+            drawLineElement(layer, points);
+            break;
+          }
+      }
+    });  
+  });
+  
+}
+
 function toolSelection(toolSelected) {
   currentTool = toolSelected.val();
 
   switch (currentTool) {
     case TOOL_LOAD:
       {
-        $(dropbox_handler.file_data).find('shape').each(function () {
-          switch ($(this).attr('type')) {
-            case TOOL_RECT:
-              {
-                console.log('RECT');
-                var x = parseInt($(this).attr('x'));
-                var y = parseInt($(this).attr('y'));
-                var width = parseInt($(this).attr('width'));
-                var height = parseInt($(this).attr('height'));
-                
-                var text = '';
-                if ($(this).text() != '') {
-                  text = $(this).text();
-                }
-
-                drawRectElement(layer, x, y, x + width, y + height, text);
-                
-                break;
-              }
-            
-            case TOOL_ARROW:
-              {
-                console.log('ARROW');
-                var points = [];
-                
-                $(this).find('coord').each(function () {
-                  points.push(parseInt($(this).attr('x')));
-                  points.push(parseInt($(this).attr('y')));
-                });
-                
-                drawLineElement(layer, points);
-                break;
-              }
-          }
-        });
+        //loadFile('jsmapper_1.xml');
         break;
       }
     
@@ -465,63 +449,30 @@ function toolSelection(toolSelected) {
   
 }
 
-// TODO: Find more elegant way of doing this
-$("#radio1").on("click", function(event){
-  toolSelection($(this));
-});
-
-$("#radio2").on("click", function(event){
-  toolSelection($(this));
- 
-});
-
-$("#radio3").on("click", function(event){
-  toolSelection($(this));       
-});
-
-$("#radio4").on("click", function(event){
-  toolSelection($(this));       
-});
-
-$("#radio5").on("click", function(event){
-  toolSelection($(this));       
-});
-
-$("#radio6").on("click", function(event){
-  toolSelection($(this));       
-});
-
-$("#radio7").on("click", function(event){
-  toolSelection($(this));       
-});
-
-$("#radio8").on("click", function(event){
-  toolSelection($(this));       
-});
-
+/*
 window.onload = function() {
-  var stage = new Kinetic.Stage({
-    container: "container",
-    x: 0,
-    y: 0,
-    width: 1240,
-    height: 600
-  });
-  // add the layer to the stage
-  stage.add(layer);
-  stage.add(templayer);
-  stage.add(popup_menu_layer);
+
   
   var elem;
   if (document.getElementById && (elem = document.getElementById('container')) ) {
       if (elem.style) elem.style.cursor = 'crosshair';
   }
-  
+
   dropbox_handler.Authenticate();
-  dropbox_handler.LoadContents('jsmapper_1.xml');
-  console.log(dropbox_handler.file_data);
+  
+  var fileparameter = window.location.search.replace( "?filename=", "" );
+  if (fileparameter != '') {
+    loadFile(fileparameter);    
+  }
+  //dropbox_handler.LoadContents('jsmapper_1.xml');
   
 }; //onload
+*/
+/*
+function draw_element_handler(mainLayer, templayer) {
+  
+};
+*/
 
 function showCursor() {
   if (cursorVisible) {
@@ -582,6 +533,47 @@ function drawLineElement(drawtolayer, points) {
   drawtolayer.add(arrow);
   drawtolayer.draw();
 
+}
+
+function drawSelectionElement(drawtolayer, startx, starty, endx, endy, text) {
+  var rectx = 0;
+  var recty = 0;
+          
+  var rectheight = 0;
+  var rectwidth = 0;
+          
+  if (startx < endx) {
+    rectx = startx;
+    rectwidth = endx - startx;
+  } else {
+    rectx = endx;
+    rectwidth = startx - endx;
+  }
+  
+  if (starty < endy) {
+    recty = starty;
+    rectheight = endy - starty;
+  } else {
+    recty = endy;
+    rectheight = starty - endy;
+  }
+  
+  var rect = new Kinetic.Rect({
+
+    x: rectx,
+    y: recty,
+    width: rectwidth,
+    height: rectheight,
+    fill: '#ffffff',
+    stroke: 'black',
+    textFill: '#555',
+    strokeWidth: 1,
+    cornerRadius: 0,
+    padding: 0,
+  });
+  
+  drawtolayer.add(rect);
+  drawtolayer.draw();  
 }
 
 function drawRectElement(drawtolayer, startx, starty, endx, endy, text) {
@@ -711,6 +703,11 @@ function changeText(shape) {
   }
 }
 
+function getRelativeCoords(event) {
+    if (event.offsetX !== undefined && event.offsetY !== undefined) { return { x: event.offsetX, y: event.offsetY }; }
+    return { x: event.layerX, y: event.layerY };
+}
+
 /*
  * drawDownHandler
  *
@@ -727,8 +724,9 @@ function drawDownHandler(event) {
     x = event.pageX;
     y = event.pageY;          
   } else {
-    x = event.x;
-    y = event.y;          
+    var relativecoord = getRelativeCoords(event);
+    x = relativecoord.x;
+    y = relativecoord.y;          
   }
   
   console.log('Current Tool: ' + currentTool);
@@ -741,6 +739,7 @@ function drawDownHandler(event) {
           if (item != null) {
             popup_menu.showPopup(popup_menu_layer, item, x, y);          
           } else {
+            console.log('hide popup');
             popup_menu.hidePopup(popup_menu_layer);
           }
         } else {
@@ -802,8 +801,9 @@ function drawEndHandler(event) {
 
   if (drawing) {
     if (!Modernizr.touch) {
-      draw_end_x = event.x;
-      draw_end_y = event.y;          
+      var relativecoord = getRelativeCoords(event);
+      draw_end_x = relativecoord.x;
+      draw_end_y = relativecoord.y;  
     } 
 
     switch (currentTool) {
@@ -836,9 +836,40 @@ function drawMoveHandler(event) {
     x = event.pageX;
     y = event.pageY;          
   } else {
-    x = event.x;
-    y = event.y;
+    var relativecoord = getRelativeCoords(event);
+    x = relativecoord.x;
+    y = relativecoord.y;  
   }
+  
+  if (currentTool === TOOL_MOVE) {
+      
+        console.log("I am here");
+
+        if (!Modernizr.touch) {
+          var item = selectShape(layer, x, y);
+          // if the cursor is currently hovering on top
+          if (item != null) {
+            templayer.removeChildren();
+            var CONST_SELECTION_ITEM_SIZE = 4;
+            drawSelectionElement(templayer, item.getX() + (item.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + (item.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
+            drawSelectionElement(templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() + (item.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE,item.getY() + (item.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE);
+            drawSelectionElement(templayer, item.getX() + (item.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE + item.getHeight(), item.getX() + (item.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE + item.getHeight());
+            drawSelectionElement(templayer, item.getX() - CONST_SELECTION_ITEM_SIZE + item.getWidth(), item.getY() + (item.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE + item.getWidth(), item.getY() + (item.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE);
+
+            drawSelectionElement(templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
+            drawSelectionElement(templayer, item.getX() + item.getWidth() - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + item.getWidth() + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
+            drawSelectionElement(templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() + CONST_SELECTION_ITEM_SIZE);
+            drawSelectionElement(templayer, item.getX() + item.getWidth() - CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() - CONST_SELECTION_ITEM_SIZE, item.getX() + item.getWidth() + CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() + CONST_SELECTION_ITEM_SIZE);
+            
+          } else {
+            templayer.removeChildren();
+            templayer.draw();
+          }
+        }
+        
+  }
+
+  
   
   if (drawing === true) {
     draw_end_x = x;
@@ -857,7 +888,7 @@ function drawMoveHandler(event) {
         {
           drawRectElement(templayer, draw_start_x, draw_start_y, x, y);                    
           break;
-        }
+        }        
     }
     
   }
@@ -909,6 +940,7 @@ function keyDownHandler(event) {
 }
 var el = document.getElementById('container');
 
+/*
 if (Modernizr.touch) {
   el.addEventListener('touchstart', function(event) { drawDownHandler(event); });    
   el.addEventListener('touchend', function(event) { drawEndHandler(event); });    
@@ -918,7 +950,8 @@ if (Modernizr.touch) {
   el.addEventListener('mouseup', function(event) { drawEndHandler(event); });    
   el.addEventListener('mousemove', function(event) { drawMoveHandler(event); });    
 }
-document.addEventListener('keydown', function(event) { keyDownHandler(event); });    
+document.addEventListener('keydown', function(event) { keyDownHandler(event); });
+*/
     </script>
     
   </body>

@@ -14,4 +14,4 @@ TBD
 
 ## Copyright and License
 
-The library is Copyright (c) 2012 Miika Haapalainen. 
+The software is Copyright (c) 2012 Miika Haapalainen. Licensed under LPGL.
