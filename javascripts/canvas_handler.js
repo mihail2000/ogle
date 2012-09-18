@@ -1,5 +1,24 @@
 define (['javascripts/kineticjs-4.0.1.js', 'javascripts/modernizr.custom.90822.js'], function() {
 var CONST_SEPARATOR = '<separator>';
+var TOOL_SELECT = 'select';
+var TOOL_MOVE = 'move';
+var TOOL_RECT = 'rect';
+var TOOL_ARROW = 'arrow';
+var TOOL_TEXT = 'settext';
+var TOOL_ADDCHILD = 'addchild';
+var TOOL_DELETE = 'delete';
+var TOOL_LOAD = 'load';
+var TOOL_SAVE = 'save';
+var CONST_SELECTION_ITEM_SIZE = 6;
+
+var RESIZE_TOP_LEFT = 1;
+var RESIZE_TOP_CENTER = 2;
+var RESIZE_TOP_RIGHT = 3;
+var RESIZE_LEFT_CENTER = 4;
+var RESIZE_RIGHT_CENTER = 5;
+var RESIZE_BOTTOM_LEFT = 6;
+var RESIZE_BOTTOM_CENTER = 7;
+var RESIZE_BOTTOM_RIGHT = 8;
   /*
    * XML_handler
    *
@@ -72,7 +91,6 @@ var CONST_SEPARATOR = '<separator>';
                 XMLString += '"</coord>\n';  
               }
               XMLString += '\t\t</coords>\n\t';
-  
               break;
             }
         }
@@ -134,6 +152,16 @@ var CONST_SEPARATOR = '<separator>';
         }
       }        
       return shape;
+    },
+    isBetween: function(number, lower, higher) {
+      var retval = false;
+      
+      if (number >= lower && number <= higher) {
+        retval = true;
+      }
+      
+      return retval;
+      
     }
   };
   var wait_dialog = {
@@ -315,6 +343,8 @@ var CONST_SEPARATOR = '<separator>';
     text_edit_shape: null,
     text_edit_string: '',
     cursorVisible: false,
+    selectionVisible: false,
+    resizeEnabled: 0,
     showCursor: function() {
       if (kinetic_obj.cursorVisible) {
         kinetic_obj.text_edit_shape.setText(kinetic_obj.text_edit_string);
@@ -413,7 +443,7 @@ var CONST_SEPARATOR = '<separator>';
         strokeWidth: 2
         });
     
-      kinetic_obj.latestitem = arrow;
+      this.latestitem = arrow;
       // add the shape to the layer
       drawtolayer.add(arrow);
       drawtolayer.draw();
@@ -510,7 +540,93 @@ var CONST_SEPARATOR = '<separator>';
             }
             break;
           }
-        
+        case TOOL_MOVE:
+          {
+            if (this.selectionVisible) {
+              var item = canvas_util.selectShape(kinetic_obj.templayer, x, y);
+              if (item != null && this.latestitem != null) {
+                this.selectionVisible = false;
+                this.templayer.removeChildren();
+                this.templayer.draw();
+                console.log('resize enabled');
+                // Decide how to do resizing, i.e. from which spot user started the resize
+                
+                console.log('x ' + x + 'y ' + y);
+                console.log('ix ' + this.latestitem.getX() + 'iy ' + this.latestitem.getY());
+                
+                
+                //var Y_Spot =;
+                var CONST_TOP_Y = 2;
+                var CONST_BOTTOM_Y = 1;
+                var CONST_CENTER_Y = 3;
+                 function Get_Y_Spot(y) {
+                  var retval = 0;
+                  if (canvas_util.isBetween(y, kinetic_obj.latestitem.getY() + kinetic_obj.latestitem.getHeight() - CONST_SELECTION_ITEM_SIZE, kinetic_obj.latestitem.getY() + kinetic_obj.latestitem.getHeight() + CONST_SELECTION_ITEM_SIZE) ) {                    
+                      retval = CONST_BOTTOM_Y;                  
+                  }
+
+                  if (canvas_util.isBetween(y, kinetic_obj.latestitem.getY() - CONST_SELECTION_ITEM_SIZE, kinetic_obj.latestitem.getY() + CONST_SELECTION_ITEM_SIZE) ) {                    
+                      retval = CONST_TOP_Y;                  
+                  }
+
+                  if (canvas_util.isBetween(y, kinetic_obj.latestitem.getY() + (kinetic_obj.latestitem.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, kinetic_obj.latestitem.getY() + (kinetic_obj.latestitem.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE) ) {                    
+                      retval = CONST_CENTER_Y;                  
+                  }
+                  
+                  return retval;
+                }
+                
+                // TODO: There's a more beautiful way of doing this
+                if (canvas_util.isBetween(x, this.latestitem.getX() - CONST_SELECTION_ITEM_SIZE, this.latestitem.getX() + CONST_SELECTION_ITEM_SIZE) ) {
+                  // Selection is on the left side
+                  switch (Get_Y_Spot(y)) {
+                    case CONST_BOTTOM_Y: {
+                       this.resizeEnabled = RESIZE_BOTTOM_LEFT;
+                       break;
+                    }
+                    case CONST_TOP_Y: {
+                       this.resizeEnabled = RESIZE_TOP_LEFT;  
+                      break;
+                    }
+                    case CONST_CENTER_Y: {
+                      this.resizeEnabled = RESIZE_LEFT_CENTER;
+                      break;
+                    }
+                  }
+                } else if (canvas_util.isBetween(x, this.latestitem.getX() + this.latestitem.getWidth() - CONST_SELECTION_ITEM_SIZE, this.latestitem.getX() + this.latestitem.getWidth() + CONST_SELECTION_ITEM_SIZE)) {
+                  // Selection is on the right side
+                  switch (Get_Y_Spot(y)) {
+                    case CONST_BOTTOM_Y: {
+                       this.resizeEnabled = RESIZE_BOTTOM_RIGHT;
+                       break;
+                    }
+                    case CONST_TOP_Y: {
+                       this.resizeEnabled = RESIZE_TOP_RIGHT;  
+                      break;
+                    }
+                    case CONST_CENTER_Y: {
+                      this.resizeEnabled = RESIZE_RIGHT_CENTER;
+                      break;
+                    }
+                  }
+                } else if (canvas_util.isBetween(x, this.latestitem.getX() + (this.latestitem.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, this.latestitem.getX() + (this.latestitem.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE) ) {
+                  // Selection is in the middle section
+                                    switch (Get_Y_Spot(y)) {
+                    case CONST_BOTTOM_Y: {
+                       this.resizeEnabled = RESIZE_BOTTOM_CENTER;
+                       break;
+                    }
+                    case CONST_TOP_Y: {
+                       this.resizeEnabled = RESIZE_TOP_CENTER;  
+                      break;
+                    }
+                  }
+                }
+                console.log('resize corner: ' + this.resizeEnabled);
+              }
+            }
+            break;
+          }
         case TOOL_ARROW:
         case TOOL_RECT:
           {
@@ -560,6 +676,7 @@ var CONST_SEPARATOR = '<separator>';
       }
     },
     drawEndHandler: function(event) {
+      this.resizeEnabled = 0;
       if (kinetic_obj.drawing) {
         if (!Modernizr.touch) {
           var relativecoord = kinetic_obj.getRelativeCoords(event);
@@ -600,52 +717,206 @@ var CONST_SEPARATOR = '<separator>';
         y = relativecoord.y;  
       }
       
-      if (kinetic_obj.currentTool === TOOL_MOVE) {
-            if (!Modernizr.touch) {
-              var item = canvas_util.selectShape(kinetic_obj.layer, x, y);
-              // if the cursor is currently hovering on top
-              if (item != null) {
-                kinetic_obj.templayer.removeChildren();
-                var CONST_SELECTION_ITEM_SIZE = 4;
-                kinetic_obj.drawSelectionElement(kinetic_obj.templayer, item.getX() + (item.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + (item.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
-                kinetic_obj.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() + (item.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE,item.getY() + (item.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE);
-                kinetic_obj.drawSelectionElement(kinetic_obj.templayer, item.getX() + (item.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE + item.getHeight(), item.getX() + (item.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE + item.getHeight());
-                kinetic_obj.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE + item.getWidth(), item.getY() + (item.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE + item.getWidth(), item.getY() + (item.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE);
-    
-                kinetic_obj.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
-                kinetic_obj.drawSelectionElement(kinetic_obj.templayer, item.getX() + item.getWidth() - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + item.getWidth() + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
-                kinetic_obj.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() + CONST_SELECTION_ITEM_SIZE);
-                kinetic_obj.drawSelectionElement(kinetic_obj.templayer, item.getX() + item.getWidth() - CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() - CONST_SELECTION_ITEM_SIZE, item.getX() + item.getWidth() + CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() + CONST_SELECTION_ITEM_SIZE);
-                
-              } else {
-                kinetic_obj.templayer.removeChildren();
-                kinetic_obj.templayer.draw();
-              }
-            }
-            
-      }
-      if (kinetic_obj.drawing === true) {
-        draw_end_x = x;
-        draw_end_y = y;
-        kinetic_obj.templayer.removeChildren();
-        kinetic_obj.templayer.draw();
+      if (this.resizeEnabled != 0 && this.latestitem != null) {
+        var newheight = 0;
+        var newwidth = 0;
+        var newX = x;
+        var newY = y;
+
+        //switch (this.resizeEnabled) {
+        //  case RESIZE_TOP_LEFT:{
+ 
+        //}
         
-        switch (kinetic_obj.currentTool) {
-          case TOOL_ARROW:
-            {
-              kinetic_obj.drawArrowElement(kinetic_obj.templayer, kinetic_obj.draw_start_x, kinetic_obj.draw_start_y, x, y);
-              break;
+        
+        
+        switch (this.resizeEnabled) {
+          case RESIZE_TOP_LEFT:{
+            if (x > this.latestitem.getX()) {
+              newwidth = this.latestitem.getWidth() - (x - this.latestitem.getX());
+            } else {
+              newwidth = this.latestitem.getWidth() + (this.latestitem.getX() - x);                
             }
+            if (y > this.latestitem.getY()) {
+              newheight = this.latestitem.getHeight() - (y - this.latestitem.getY());
+            } else {
+              newheight = this.latestitem.getHeight() + (this.latestitem.getY() - y);                
+            }
+            break;
+          }
+         case RESIZE_BOTTOM_LEFT: {
+          newY = this.latestitem.getY();
+          newX = x;
+          if (x > this.latestitem.getX()) {
+            newwidth = this.latestitem.getWidth() - (x - this.latestitem.getX());
+          } else {
+            newwidth = this.latestitem.getWidth() + (this.latestitem.getX() - x);                
+          }
+          if (y > (this.latestitem.getY() + this.latestitem.getHeight()) ) {
+            newheight = this.latestitem.getHeight() + (y - (this.latestitem.getY() + this.latestitem.getHeight()));
+          } else {
+            newheight = this.latestitem.getHeight() - ((this.latestitem.getY() + this.latestitem.getHeight()) - y);
+          }
+          break;
+         }
+         case RESIZE_TOP_RIGHT: {
+          newY = y;
+          newX = this.latestitem.getX();
+          if (x > (this.latestitem.getX() + this.latestitem.getWidth() )) {
+            newwidth = this.latestitem.getWidth() + (x -(this.latestitem.getX() + this.latestitem.getWidth()));
+          } else {
+            newwidth = this.latestitem.getWidth() + (x -(this.latestitem.getX() + this.latestitem.getWidth()));                
+          }
+          if (y > this.latestitem.getY()) {
+            newheight = this.latestitem.getHeight() - (y - this.latestitem.getY());
+          } else {
+            newheight = this.latestitem.getHeight() + (this.latestitem.getY() - y);                
+          }
+          break;
+         }
+          case RESIZE_BOTTOM_RIGHT: {
+          newY = this.latestitem.getY();
+          newX = this.latestitem.getX();
+          if (x > (this.latestitem.getX() + this.latestitem.getWidth() )) {
+            newwidth = this.latestitem.getWidth() + (x -(this.latestitem.getX() + this.latestitem.getWidth()));
+          } else {
+            newwidth = this.latestitem.getWidth() + (x -(this.latestitem.getX() + this.latestitem.getWidth()));                
+          }
+          if (y > (this.latestitem.getY() + this.latestitem.getHeight()) ) {
+            newheight = this.latestitem.getHeight() + (y - (this.latestitem.getY() + this.latestitem.getHeight()));
+          } else {
+            newheight = this.latestitem.getHeight() - ((this.latestitem.getY() + this.latestitem.getHeight()) - y);
+          }
+          break;
+          }
+          case RESIZE_TOP_CENTER: {
+           newX = this.latestitem.getX();
+           newwidth = this.latestitem.getWidth();
+           newY = y;
+           if (y > this.latestitem.getY()) {
+            newheight = this.latestitem.getHeight() - (y - this.latestitem.getY());
+          } else {
+            newheight = this.latestitem.getHeight() + (this.latestitem.getY() - y);                
+          }
+           
+           break; 
+          }
+          case RESIZE_BOTTOM_CENTER: {
+           newX = this.latestitem.getX();
+           newwidth = this.latestitem.getWidth();
+           newY = this.latestitem.getY();
+
+          if (y > (this.latestitem.getY() + this.latestitem.getHeight()) ) {
+            newheight = this.latestitem.getHeight() + (y - (this.latestitem.getY() + this.latestitem.getHeight()));
+          } else {
+            newheight = this.latestitem.getHeight() - ((this.latestitem.getY() + this.latestitem.getHeight()) - y);
+          }
+                       
+           break; 
+          }
+          case RESIZE_LEFT_CENTER: {
+           newY = this.latestitem.getY();
+           newheight = this.latestitem.getHeight();
+           newX = x;
+            if (x > this.latestitem.getX()) {
+              newwidth = this.latestitem.getWidth() - (x - this.latestitem.getX());
+            } else {
+              newwidth = this.latestitem.getWidth() + (this.latestitem.getX() - x);                
+            }
+           
+           break; 
+          }
+          case RESIZE_RIGHT_CENTER: {
+           newY = this.latestitem.getY();
+           newheight = this.latestitem.getHeight();
+           newX = this.latestitem.getX();           
+            if (x > (this.latestitem.getX() + this.latestitem.getWidth() )) {
+              newwidth = this.latestitem.getWidth() + (x -(this.latestitem.getX() + this.latestitem.getWidth()));
+            } else {
+              newwidth = this.latestitem.getWidth() + (x -(this.latestitem.getX() + this.latestitem.getWidth()));                
+            }
+
+           break; 
+          }
           
-          case TOOL_RECT:
-            {
-              kinetic_obj.drawRectElement(kinetic_obj.templayer, kinetic_obj.draw_start_x, kinetic_obj.draw_start_y, x, y);                    
-              break;
-            }        
+        }
+
+        this.latestitem.setWidth(newwidth);
+        this.latestitem.setHeight(newheight);
+        this.latestitem.setX(newX);
+        this.latestitem.setY(newY);
+        this.layer.draw();
+
+      } else {
+        if (this.currentTool === TOOL_MOVE) {
+              if (!Modernizr.touch) {
+                var item = null;
+                if (this.latestitem != null) {
+                  console.log(this.latestitem);
+                // In case the selection is already displayed, allow user to go outside of the shape for CONST_SELECTION_ITEM_SIZE before hiding the selection  
+                  if (canvas_util.isBetween(x, this.latestitem.getX() - CONST_SELECTION_ITEM_SIZE, this.latestitem.getX() + this.latestitem.getWidth() + CONST_SELECTION_ITEM_SIZE) &&
+                      canvas_util.isBetween(y, this.latestitem.getY() - CONST_SELECTION_ITEM_SIZE, this.latestitem.getY() + this.latestitem.getHeight() + CONST_SELECTION_ITEM_SIZE)
+                      ) {
+                    item = this.latestitem;
+                  } else {
+                    item = null;
+                  }
+                } else {
+                  item = canvas_util.selectShape(this.layer, x, y);                  
+                }
+              
+                kinetic_obj.changeDragDrop(false);
+                this.latestitem = item;
+                // if the cursor is currently hovering on top
+                if (item != null) {
+                  this.selectionVisible = true;
+                  this.templayer.removeChildren();
+                  // Top - center
+                  this.drawSelectionElement(kinetic_obj.templayer, item.getX() + (item.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + (item.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
+                  // Left - center
+                  this.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() + (item.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE,item.getY() + (item.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE);
+                  // Bottom - center
+                  this.drawSelectionElement(kinetic_obj.templayer, item.getX() + (item.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE + item.getHeight(), item.getX() + (item.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE + item.getHeight());
+                  // Right - center
+                  this.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE + item.getWidth(), item.getY() + (item.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE + item.getWidth(), item.getY() + (item.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE);
+      
+                  this.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
+                  this.drawSelectionElement(kinetic_obj.templayer, item.getX() + item.getWidth() - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + item.getWidth() + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
+                  this.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() + CONST_SELECTION_ITEM_SIZE);
+                  this.drawSelectionElement(kinetic_obj.templayer, item.getX() + item.getWidth() - CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() - CONST_SELECTION_ITEM_SIZE, item.getX() + item.getWidth() + CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() + CONST_SELECTION_ITEM_SIZE);
+                  
+                } else {
+                  this.selectionVisible = false;
+                  this.templayer.removeChildren();
+                  this.templayer.draw();
+                }
+              }
+              
         }
         
-      }
-      
+        if (this.drawing === true) {
+          draw_end_x = x;
+          draw_end_y = y;
+          this.templayer.removeChildren();
+          this.templayer.draw();
+          
+          switch (this.currentTool) {
+            case TOOL_ARROW:
+              {
+                this.drawArrowElement(this.templayer, this.draw_start_x, this.draw_start_y, x, y);
+                break;
+              }
+            
+            case TOOL_RECT:
+              {
+                this.drawRectElement(this.templayer, this.draw_start_x, this.draw_start_y, x, y);                    
+                break;
+              }        
+          }
+          
+        }
+        
+      }      
     },
     keyDownHandler: function(event) {
       if (kinetic_obj.text_edit_shape != null) {
@@ -738,6 +1009,7 @@ var CONST_SEPARATOR = '<separator>';
             }
         }
           wait_dialog.WaitDialog(false);
+          kinetic_obj.latestitem = null;
       });  
     }
   };
@@ -804,5 +1076,4 @@ var CONST_SEPARATOR = '<separator>';
     waitdialog: wait_dialog.WaitDialog,
     setcurrentfilename: SetCurrentFileName
   }
-  
 });
