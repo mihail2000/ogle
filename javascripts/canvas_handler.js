@@ -1,5 +1,5 @@
 define (['javascripts/kineticjs-4.0.1.js', 'javascripts/modernizr.custom.90822.js'], function() {
-
+var CONST_SEPARATOR = '<separator>';
   /*
    * XML_handler
    *
@@ -76,8 +76,7 @@ define (['javascripts/kineticjs-4.0.1.js', 'javascripts/modernizr.custom.90822.j
               break;
             }
         }
-  
-  
+
         if (type === CONST_TYPE_RECT) {
           var txt = shape.getText();
           txt = txt.replace(/(^\s+|\s+$)/g,' ');
@@ -113,6 +112,30 @@ define (['javascripts/kineticjs-4.0.1.js', 'javascripts/modernizr.custom.90822.j
     
   };
 
+  var canvas_util = {
+    /*
+     * selectShape
+     *
+     * Returns KineticJS shape object from the given layer, from the given coordinates
+     */
+    selectShape: function (selection_layer, x, y) {
+      var shape = null;
+      // Select the item user clicked
+      var point = [x, y];
+      var shapes = selection_layer.getIntersections(point);
+      if (shapes.length > 0) {
+        shape = shapes[0];  
+      }
+      for (var i=0; i < shapes.length; i++)
+      {
+        var newshape = shapes[i];
+        if (shape.getZIndex() < newshape.getZIndex()) {
+          shape = shapes[i];
+        }
+      }        
+      return shape;
+    }
+  };
   var wait_dialog = {
     timerID: 0,
     rect: null,
@@ -167,6 +190,115 @@ define (['javascripts/kineticjs-4.0.1.js', 'javascripts/modernizr.custom.90822.j
     }    
   };
 
+    // Menu object
+  var popup_menu = {
+    items: ['Cut', 'Copy', 'Paste', CONST_SEPARATOR, 'Edit shape', 'Edit text', 'Delete'],
+    visible: false,
+    popup_menu_layer: null,
+    selected_shape: null,
+    selectMenuAction: function(menulayer, x, y) {
+      if (this.selected_shape != null) {
+        var selecteditem = canvas_util.selectShape(menulayer, x, y);
+        this.hidePopup(menulayer);
+        
+        if (selecteditem != null) {
+          
+          switch (selecteditem.getText()) {
+            case this.items[5]: // Edit text
+              {
+                kinetic_obj.changeText(this.selected_shape);
+                break;
+              }
+            
+            case this.items[6]: // Delete
+              {
+                kinetic_obj.layer.remove(this.selected_shape);
+                kinetic_obj.layer.draw();
+                break;
+              }
+            
+          }
+        }
+        
+      }
+    },
+    hidePopup: function(menulayer) {
+        menulayer.removeChildren();
+        menulayer.draw();
+        this.visible = false;
+    },
+    showPopup: function(menulayer, item, x, y) {
+      /*
+       * show_popup
+       *
+       * Displays popup menu on given canvas coordinates.
+       * Popup is used to manipulate selected objects (edit text, delete etc.)
+       */
+      
+        if (this.visible) {
+          this.hidePopup(menulayer);
+        }
+        
+        this.visible = true;
+        this.selected_shape = item;
+        var y_index = 0;  
+        
+        for (var i = 0; i < this.items.length; i++) {
+          var rect = null;
+          
+          if (this.items[i] != CONST_SEPARATOR) {
+            rect = new Kinetic.Text({
+            x: x,
+            y: y + y_index,
+            width: 100,
+            height: 20,
+            text: this.items[i],
+            fill: '#cccccc',
+            stroke: '#cccccc',
+            fontSize: 8,
+            fontFamily: 'Calibri',
+            textFill: '#000',
+            strokeWidth: 0.5,
+            cornerRadius: 0,
+            padding: 5,
+            align: 'left',
+            shadow: {
+              color: 'gray',
+              blur: 1,
+              offset: [5, 5],
+              opacity: 0.1
+              }
+            });
+            y_index += 20;
+          } else {
+            rect = new Kinetic.Rect({
+            x: x,
+            y: y + y_index,
+            width: 100,
+            height: 3,
+            fill: '#dddddd',
+            stroke: '#dddddd',
+            strokeWidth: 0.5,
+            cornerRadius: 0,
+            padding: 5,
+            align: 'left',
+            shadow: {
+              color: 'gray',
+              blur: 1,
+              offset: [5, 5],
+              opacity: 0.1
+              }
+            });
+            y_index += 3;
+            
+          }
+            menulayer.add(rect);
+  
+        }
+        menulayer.draw();
+      }
+  };
+    
   var kinetic_obj = {
     stage: null,
     layer: new Kinetic.Layer(),
@@ -180,32 +312,50 @@ define (['javascripts/kineticjs-4.0.1.js', 'javascripts/modernizr.custom.90822.j
     draw_end_x: 0,
     draw_end_y: 0,
     CurrentFileName: '',
+    text_edit_shape: null,
+    text_edit_string: '',
+    cursorVisible: false,
+    showCursor: function() {
+      if (kinetic_obj.cursorVisible) {
+        kinetic_obj.text_edit_shape.setText(kinetic_obj.text_edit_string);
+        kinetic_obj.cursorVisible = false;
+      } else {
+        var newtext = kinetic_obj.text_edit_string + '|';
+        kinetic_obj.text_edit_shape.setText(newtext);
+        kinetic_obj.cursorVisible = true;
+      }
+      kinetic_obj.layer.draw(); 
+    },
+    // Select the shape user clicked / touched
+    changeText: function(shape) {
+      if (kinetic_obj.text_edit_shape == null) {
+          kinetic_obj.text_edit_shape = shape;
+          kinetic_obj.text_edit_string = '';
+    
+          kinetic_obj.text_edit_string = kinetic_obj.text_edit_shape.getText();
+    
+          // In non-touch environments, text is edited directly to the shape
+          if (!Modernizr.touch) {
+            kinetic_obj.cursorTimerID = setInterval(function(){kinetic_obj.showCursor()}, 500);                                
+            kinetic_obj.text_edit_shape.setFill('#ffffff');
+          // In touch environments, display text input box (TODO: figure out if there is more elegant way)
+          } else {
+            var newText = prompt('Enter new text', kinetic_obj.text_edit_shape.getText());
+            kinetic_obj.text_edit_shape.setText(newText);
+            kinetic_obj.text_edit_shape = null;
+          }
+      }
+    },
     getRelativeCoords: function (event) {
       if (event.offsetX !== undefined && event.offsetY !== undefined) { return { x: event.offsetX, y: event.offsetY }; }
       return { x: event.layerX, y: event.layerY };
     },
-
-    /*
-     * selectShape
-     *
-     * Returns KineticJS shape object from the given layer, from the given coordinates
-     */
-    selectShape: function (selection_layer, x, y) {
-      var shape = null;
-      // Select the item user clicked
-      var point = [x, y];
-      var shapes = selection_layer.getIntersections(point);
-      if (shapes.length > 0) {
-        shape = shapes[0];  
-      }
-      for (var i=0; i < shapes.length; i++)
+    changeDragDrop: function(changeval) {
+      var shapes = kinetic_obj.layer.getChildren();
+      for (var i = 0; i < shapes.length; i++)
       {
-        var newshape = shapes[i];
-        if (shape.getZIndex() < newshape.getZIndex()) {
-          shape = shapes[i];
-        }
-      }        
-      return shape;
+        shapes[i].setDraggable(changeval);
+      }
     },
     drawSelectionElement: function(drawtolayer, startx, starty, endx, endy, text) {
       var rectx = 0;
@@ -347,16 +497,16 @@ define (['javascripts/kineticjs-4.0.1.js', 'javascripts/modernizr.custom.90822.j
       switch (kinetic_obj.currentTool) {
         case TOOL_SELECT:
           {
-            if (!kinetic_obj.popup_menu.visible) {
-              var item = kinetic_obj.selectShape(layer, x, y);
+            if (!popup_menu.visible) {
+              var item = canvas_util.selectShape(kinetic_obj.layer, x, y);
               if (item != null) {
-                kinetic_obj.popup_menu.showPopup(popup_menu_layer, item, x, y);          
+                popup_menu.showPopup(kinetic_obj.popup_menu_layer, item, x, y);          
               } else {
                 console.log('hide popup');
-                kinetic_obj.popup_menu.hidePopup(popup_menu_layer);
+                popup_menu.hidePopup(kinetic_obj.popup_menu_layer);
               }
             } else {
-              kinetic_obj.popup_menu.selectMenuAction(popup_menu_layer, x, y);
+              popup_menu.selectMenuAction(kinetic_obj.popup_menu_layer, x, y);
             }
             break;
           }
@@ -373,14 +523,14 @@ define (['javascripts/kineticjs-4.0.1.js', 'javascripts/modernizr.custom.90822.j
         
         case TOOL_TEXT: // Change text of the selected shape
           {
-            kinetic_obj.popup_menu.hidePopup(popup_menu_layer);
-            kinetic_obj.changeText(selectShape(layer, x, y));
+            //kinetic_obj.popup_menu.hidePopup(popup_menu_layer);
+            kinetic_obj.changeText(canvas_util.selectShape(kinetic_obj.layer, x, y));
             break;
           }
         case TOOL_ADDCHILD:
           {
             kinetic_obj.popup_menu.hidePopup(popup_menu_layer);
-            add_child = kinetic_obj.selectShape(layer, x, y);
+            add_child = canvas_util.selectShape(layer, x, y);
             
             if (add_child != null){
               kinetic_obj.addChildNode(add_child);
@@ -392,7 +542,7 @@ define (['javascripts/kineticjs-4.0.1.js', 'javascripts/modernizr.custom.90822.j
         case TOOL_DELETE:
           {
             kinetic_obj.popup_menu.hidePopup(popup_menu_layer);
-            var itemToDelete = kinetic_obj.selectShape(layer, x, y);
+            var itemToDelete = canvas_util.selectShape(layer, x, y);
             
             if (itemToDelete != null) {
               kinetic_obj.layer.remove(itemToDelete);
@@ -408,8 +558,6 @@ define (['javascripts/kineticjs-4.0.1.js', 'javascripts/modernizr.custom.90822.j
           break;
         }
       }
-      
-      
     },
     drawEndHandler: function(event) {
       if (kinetic_obj.drawing) {
@@ -454,7 +602,7 @@ define (['javascripts/kineticjs-4.0.1.js', 'javascripts/modernizr.custom.90822.j
       
       if (kinetic_obj.currentTool === TOOL_MOVE) {
             if (!Modernizr.touch) {
-              var item = kinetic_obj.selectShape(kinetic_obj.layer, x, y);
+              var item = canvas_util.selectShape(kinetic_obj.layer, x, y);
               // if the cursor is currently hovering on top
               if (item != null) {
                 kinetic_obj.templayer.removeChildren();
@@ -498,6 +646,47 @@ define (['javascripts/kineticjs-4.0.1.js', 'javascripts/modernizr.custom.90822.j
         
       }
       
+    },
+    keyDownHandler: function(event) {
+      if (kinetic_obj.text_edit_shape != null) {
+        switch (event.keyCode) {
+          
+          case 13: // enter
+            {
+              kinetic_obj.text_edit_shape.setText(kinetic_obj.text_edit_string);
+              kinetic_obj.text_edit_shape.setFill('#aaaaaa');
+              kinetic_obj.layer.draw();
+              clearInterval(kinetic_obj.cursorTimerID); 
+              kinetic_obj.text_edit_shape = null;                
+              break;
+            }
+            
+          case 8: // backspace
+            {
+              var currentString = kinetic_obj.text_edit_string;
+              if (currentString.length > 1) {
+                var newString = currentString.substr(0, currentString.length - 1);
+                kinetic_obj.text_edit_string = newString;
+              } else {
+                kinetic_obj.text_edit_string = '';
+              }
+              kinetic_obj.text_edit_shape.setText(text_edit_string);
+              kinetic_obj.layer.draw();                                 
+              break;
+            }
+    
+        default:
+          {
+            var currentString = kinetic_obj.text_edit_string;              
+            var character = String.fromCharCode(event.keyCode);
+            var newString = currentString.concat(character);
+            kinetic_obj.text_edit_string = newString.toLowerCase();
+            kinetic_obj.text_edit_shape.setText(kinetic_obj.text_edit_string);
+            kinetic_obj.layer.draw();
+            break;
+          }
+        }
+      }
     },
     savefilecallback: function(error, stat) {
       
@@ -575,7 +764,7 @@ define (['javascripts/kineticjs-4.0.1.js', 'javascripts/modernizr.custom.90822.j
       el.addEventListener('mouseup', function(event) { kinetic_obj.drawEndHandler(event); });    
       el.addEventListener('mousemove', function(event) { kinetic_obj.drawMoveHandler(event); });    
     }
-    //document.addEventListener('keydown', function(event) { kinetic_obj.keyDownHandler(event); });
+    document.addEventListener('keydown', function(event) { kinetic_obj.keyDownHandler(event); });
   }
   
   function SetCurrentFileName(filename) {
@@ -588,6 +777,16 @@ define (['javascripts/kineticjs-4.0.1.js', 'javascripts/modernizr.custom.90822.j
     switch (kinetic_obj.currentTool) {
       case TOOL_SAVE: {
           kinetic_obj.SaveFile(kinetic_obj.layer);
+        break;
+      }
+      case TOOL_MOVE:
+      {
+        kinetic_obj.changeDragDrop(true);        
+        break;
+      }
+    default:
+      {
+        kinetic_obj.changeDragDrop(false);
         break;
       }
     }
