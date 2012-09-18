@@ -1,10 +1,15 @@
-// Drop box handler
+/*
+ * Dropbox handler
+ *
+ * This module is used to store and retrieve data to Dropbox.
+ * Module itself does not know anything about the data structure / format, but is only used to store and retrieve data to/from Dropbox.
+ */
 define (['dropbox'], function() {
   
   var dropbox_data = {
     client: null,
     authenticated: false,
-    file_data: '',
+    file_data: '',  
   /*
    * DropBoxError
    * DropBox error handling function
@@ -64,37 +69,52 @@ define (['dropbox'], function() {
       return true;
   }
   
-  function loadcontents(filename) {
-    var status = dropbox_data.client.readFile('jsmapper_1.xml', function(error, data){
-      if (error) {
-        return dropbox_data.DropBoxError(error);
-      } else {
-        dropbox_data.file_data = data;
-        console.log(data);
-      }
-      
-    });    
+  /*
+   * SaveContents
+   */
+  function SaveContents(filename, data, callback) {
+    dropbox_data.client.writeFile(filename, data, callback);
   }
   
-  function readdir(callback) {
-    //dropbox_data.client.readdir("/", function(error, entries) {
-    dropbox_data.client.readdir("/", callback);
-    /*
-    {
-      if (error) {
-        return dropbox_data.DropBoxError(error);  
-      }
-      
-      //return entries;
-      alert("Your Dropbox contains " + entries.join(", "));
-    });
-    */
+  /*
+   * LoadContents
+   *
+   * Loads given file from the Dropbox.
+   * Actual loading happens asynchronously - second parameter is a callback function, which will be called when call has been completed.
+   *
+   * Parameters:
+   * filename - path & filename to retrieve from Dropbox.
+   * callback - callback function to be called when ready. Function prototype: function(error, data). File contents will be passed as 'data' parameter to callback function.
+   *
+   * Returns:
+   * TRUE if the function succeed, otherwise FALSE.
+   */
+  function LoadContents(filename, callback) {
+    var status = false;
+    if (callback != null && callback != 'undefined') {
+      var status = dropbox_data.client.readFile(filename, callback);
+    }
+    return status;
   }
   
-  
+  /*
+   * readdir
+   *
+   * Reads contents of the given directory from the Dropbox and returns its contents using the given callback function.
+   * Note: root level directory is the folder in Dropbox, which is reserved for this application (not the actual Dropbox root).
+   *
+   * Parameters:
+   * dirname - directory name, which contents will be retrieved.
+   * callback - callback function to be called when ready. Function prototype: function(error, data). Directory contents will be passed as an array to 'data' parameter.
+   */
+  function readdir(dirname, callback) {
+    dropbox_data.client.readdir(dirname, callback);
+  }
+    
   return {
     authenticate: authenticate,
-    loadcontents: loadcontents,
+    loadcontents: LoadContents,
+    savecontents: SaveContents,
     readdir: readdir,
     error_handler: dropbox_data.DropBoxError,
     filedata: dropbox_data.file_data
