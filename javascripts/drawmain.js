@@ -19,8 +19,7 @@ window.onload = function() {
             var fileparameter = window.location.search.replace( "?filename=", "" );
               if (fileparameter != '') {
                 canvas_handler.setcurrentfilename(fileparameter);
-
-                require(['ogle_dropbox_handler'], function(dropbox_handler) {
+                require(['dropbox_handler'], function(dropbox_handler) {
                     canvas_handler.waitdialog(true);
                     dropbox_handler.authenticate();
                     dropbox_handler.loadcontents(fileparameter, canvas_handler.loadfilecallback);

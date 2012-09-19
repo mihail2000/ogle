@@ -4,7 +4,7 @@
  * This module is used to store and retrieve data to Dropbox.
  * Module itself does not know anything about the data structure / format, but is only used to store and retrieve data to/from Dropbox.
  */
-define (['dropbox'], function() {
+define (['lib/dropbox', 'popup_menu'], function() {
   
   var dropbox_data = {
     client: null,

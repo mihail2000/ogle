@@ -1,4 +1,4 @@
-require(['ogle_dropbox_handler'], function(dropbox_handler) {        
+require(['dropbox_handler'], function(dropbox_handler) {        
     dropbox_handler.authenticate();
     dropbox_handler.readdir('/', function(error, entries) {
         if (error) {
