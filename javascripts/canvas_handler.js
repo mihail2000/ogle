@@ -1,4 +1,5 @@
-define (['javascripts/lib/kineticjs-4.0.1.js', 'javascripts/lib/modernizr.custom.90822.js'], function() {
+define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'javascripts/lib/kineticjs-4.0.1.js', 'javascripts/lib/modernizr.custom.90822.js', 'shapeToXML'], function(dropbox_handler, canvas_util, popupMenu) {
+
 var TOOL_SELECT = 'select';
 var TOOL_MOVE = 'move';
 var TOOL_RECT = 'rect';
@@ -18,151 +19,7 @@ var RESIZE_RIGHT_CENTER = 5;
 var RESIZE_BOTTOM_LEFT = 6;
 var RESIZE_BOTTOM_CENTER = 7;
 var RESIZE_BOTTOM_RIGHT = 8;
-  /*
-   * XML_handler
-   *
-   * This class is used save diagrams as XML files and load diagrams from XML files.
-   */
-  var XML_handler = {
-    get_header_XML: function() {
-      var str = '<?xml version="1.0" encoding="utf-8"?>\n<shapes>\n';
-      return str;
-    },
-    get_footer_XML: function() {
-      var str = '</shapes>';
-      return str;
-    },
-    /*
-     * convert_to_xml
-     *
-     * Converts given shape (1st paramerter) to XML string and returns it.
-     * Returned XML can be used to save the given shape to a file.
-     */
-    convert_to_XML: function(shape) {
-      var XMLString = '';
-        var type = '';
-        var CONST_TYPE_RECT = 'RECT';
-        var CONST_TYPE_ARROW = 'ARROW';
-  
-        XMLString += '\t<shape ';
-  
-        if (shape instanceof Kinetic.Text) {
-          type = CONST_TYPE_RECT;
-          console.log('This is rect');
-          XMLString += 'type="rect"';
-        } else if (shape instanceof Kinetic.Line)
-        {
-          type = CONST_TYPE_ARROW;
-          XMLString += 'type="arrow"';
-          console.log('This is line');
-        }
-        
-        switch (type)
-        {
-          case CONST_TYPE_RECT:
-            {
-              XMLString += this.XML_from_property(shape, 'getX', 'x')
-              XMLString += this.XML_from_property(shape, 'getY', 'y')
-              XMLString += this.XML_from_property(shape, 'getZIndex', 'zindex')
-              XMLString += this.XML_from_property(shape, 'getHeight', 'height')
-              XMLString += this.XML_from_property(shape, 'getWidth', 'width')
-              XMLString += this.XML_from_property(shape, 'getCornerRadius', 'cornerradius')
-              XMLString += this.XML_from_property(shape, 'getFill', 'fill')
-              XMLString += '>';
-              break;
-            }
-            
-          case CONST_TYPE_ARROW:
-            {
-              //XMLString += this.XML_from_property(shape, 'getX', 'x')
-              //XMLString += this.XML_from_property(shape, 'getY', 'y')
-              var points = shape.getPoints();
-                XMLString += this.XML_from_property(shape, 'getZIndex', 'zindex')
-                XMLString += '>\n\t\t<coords>\n';
-                
-              for (var i = 0; i < points.length; i++)
-              {
-                XMLString += '\t\t\t<coord x="';  
-                XMLString += points[i].x;
-                XMLString += '" ';  
-                XMLString += 'y="';  
-                XMLString += points[i].y;
-                XMLString += '"</coord>\n';  
-              }
-              XMLString += '\t\t</coords>\n\t';
-              break;
-            }
-        }
 
-        if (type === CONST_TYPE_RECT) {
-          var txt = shape.getText();
-          txt = txt.replace(/(^\s+|\s+$)/g,' ');
-          if (txt != '') {
-            XMLString += txt;
-          }        
-        }
-        XMLString += '</shape>\n';
-      return XMLString;
-    },
-    /*
-     * XML_from_property
-     *
-     * Parameters:
-     * obj - reference to the object (i.e. KineticJS shape type of object)
-     * obj_property - name of the method to be called to retrieve the value from the given object
-     * XMLAttribute - attribute name where to store the value from the given object
-     *
-     * Returns:
-     * XML attribute with a given name and a value from the given object, using the given method.
-     */
-    XML_from_property: function(obj, obj_method, XMLAttribute, obj_property) {
-      var str = ' ' + XMLAttribute;
-      str += '="';
-      if (obj_property === false || obj_property == undefined) {
-        str += obj[obj_method]();      
-      } else {
-        str =+ obj[obj_property];
-      }
-      str += '"';
-      return str;  
-    }
-    
-  };
-
-  var canvas_util = {
-    /*
-     * selectShape
-     *
-     * Returns KineticJS shape object from the given layer, from the given coordinates
-     */
-    selectShape: function (selection_layer, x, y) {
-      var shape = null;
-      // Select the item user clicked
-      var point = [x, y];
-      var shapes = selection_layer.getIntersections(point);
-      if (shapes.length > 0) {
-        shape = shapes[0];  
-      }
-      for (var i=0; i < shapes.length; i++)
-      {
-        var newshape = shapes[i];
-        if (shape.getZIndex() < newshape.getZIndex()) {
-          shape = shapes[i];
-        }
-      }        
-      return shape;
-    },
-    isBetween: function(number, lower, higher) {
-      var retval = false;
-      
-      if (number >= lower && number <= higher) {
-        retval = true;
-      }
-      
-      return retval;
-      
-    }
-  };
   var wait_dialog = {
     timerID: 0,
     rect: null,
@@ -221,8 +78,8 @@ var RESIZE_BOTTOM_RIGHT = 8;
     stage: null,
     layer: new Kinetic.Layer(),
     templayer: new Kinetic.Layer(),
-    popup_menu_layer: new Kinetic.Layer(),
-    popup_menu: null,
+    popupMenu_layer: new Kinetic.Layer(),
+    popupMenu: null,
     currentTool: '',
     drawing: false,
     latestitem: null,
@@ -527,23 +384,29 @@ var RESIZE_BOTTOM_RIGHT = 8;
         y = relativecoord.y;
       }
       
+      popupMenu.selectionListener(x, y);
+      
       console.log('currenttool ' + kinetic_obj.currentTool);
-      console.log(popup_menu);
+      console.log(popupMenu);
       
       switch (kinetic_obj.currentTool) {
         case TOOL_SELECT:
           {
-            if (!popup_menu.visible) {
+            
+            if (!popupMenu.visible) {
               var item = canvas_util.selectShape(kinetic_obj.layer, x, y);
               if (item != null) {
-                popup_menu.showPopup(kinetic_obj.popup_menu_layer, item, x, y);          
+                popupMenu.showPopup(kinetic_obj.popupMenu_layer, x, y, function(id) {
+                  alert('popup selected: ' + id);
+                });          
               } else {
                 console.log('hide popup');
-                popup_menu.hidePopup(kinetic_obj.popup_menu_layer);
+                popupMenu.hidePopup(kinetic_obj.popupMenu_layer);
               }
             } else {
-              popup_menu.selectMenuAction(kinetic_obj.popup_menu_layer, x, y);
+              popupMenu.selectMenuAction(kinetic_obj.popupMenu_layer, x, y);
             }
+            
             break;
           }
         case TOOL_MOVE:
@@ -631,7 +494,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
         case TOOL_ARROW:
         case TOOL_RECT:
           {
-            //kinetic_obj.popup_menu.hidePopup(popup_menu_layer);
+            //kinetic_obj.popupMenu.hidePopup(popupMenu_layer);
             kinetic_obj.drawing = true;
             kinetic_obj.draw_start_x = x;
             kinetic_obj.draw_start_y = y;              
@@ -640,14 +503,14 @@ var RESIZE_BOTTOM_RIGHT = 8;
         
         case TOOL_TEXT: // Change text of the selected shape
           {
-            //kinetic_obj.popup_menu.hidePopup(popup_menu_layer);
+            //kinetic_obj.popupMenu.hidePopup(popupMenu_layer);
             kinetic_obj.changeText(canvas_util.selectShape(kinetic_obj.layer, x, y));
             break;
           }
         
         case TOOL_DELETE:
           {
-            popup_menu.hidePopup(this.popup_menu_layer);
+            popupMenu.hidePopup(this.popupMenu_layer);
             var itemToDelete = canvas_util.selectShape(this.layer, x, y);
             
             if (itemToDelete != null) {
@@ -660,7 +523,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
           
         default:
         {
-          popup_menu.hidePopup(this.popup_menu_layer);
+          popupMenu.hidePopup(this.popupMenu_layer);
           break;
         }
       }
@@ -832,19 +695,20 @@ var RESIZE_BOTTOM_RIGHT = 8;
       
     },
     SaveFile: function(kineticLayer) {
-      var writeToFile = XML_handler.get_header_XML();
-
+      
+      var writeToFile = '';
       var shapes = kineticLayer.getChildren();
-      for (var i = 0; i < shapes.length; i++)
-      {
-        var shape = shapes[i];      
-        writeToFile += XML_handler.convert_to_XML(shape);
+      
+      var xmlConverter = new shapeToXML();
+      writeToFile = xmlConverter.convertToXML(shapes);
+
+      if (writeToFile != '') {
+        //require(['dropbox_handler'], function(dropbox_handler) {
+            dropbox_handler.authenticate();
+            dropbox_handler.savecontents(kinetic_obj.CurrentFileName, writeToFile, kinetic_obj.savefilecallback);
+        //});    
       }
-      writeToFile += XML_handler.get_footer_XML();
-      require(['dropbox_handler'], function(dropbox_handler) {
-          dropbox_handler.authenticate();
-          dropbox_handler.savecontents(kinetic_obj.CurrentFileName, writeToFile, kinetic_obj.savefilecallback);
-      });    
+
     },
     LoadFile: function(error, data) {
       $(data).find('shape').each(function () {
@@ -876,9 +740,10 @@ var RESIZE_BOTTOM_RIGHT = 8;
               break;
             }
         }
-          wait_dialog.WaitDialog(false);
-          kinetic_obj.latestitem = null;
-      });  
+      });
+      wait_dialog.WaitDialog(false);
+      kinetic_obj.latestitem = null;
+
     }
   };
   
@@ -893,7 +758,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
     // add the layer to the stage
     kinetic_obj.stage.add(kinetic_obj.layer);
     kinetic_obj.stage.add(kinetic_obj.templayer);
-    kinetic_obj.stage.add(kinetic_obj.popup_menu_layer);
+    kinetic_obj.stage.add(kinetic_obj.popupMenu_layer);
     var el = document.getElementById('container');
     if (Modernizr.touch) {
       el.addEventListener('touchstart', function(event) { kinetic_obj.drawDownHandler(event); });    
@@ -905,10 +770,6 @@ var RESIZE_BOTTOM_RIGHT = 8;
       el.addEventListener('mousemove', function(event) { kinetic_obj.drawMoveHandler(event); });    
     }
     document.addEventListener('keydown', function(event) { kinetic_obj.keyDownHandler(event); });
-    
-    require(['popup_menu'], function(menu) {
-      popup_menu = menu.popup_menu;
-    });
   }
   
   function SetCurrentFileName(filename) {
@@ -941,7 +802,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
     stage: kinetic_obj.stage,
     layer: kinetic_obj.layer,
     templayer: kinetic_obj.templayer,
-    popup_menu_layer: kinetic_obj.popup_menu_layer,
+    popupMenu_layer: kinetic_obj.popupMenu_layer,
     currenttool: kinetic_obj.currentTool,
     toolboxcallback: ToolBoxCallback,
     loadfilecallback: kinetic_obj.LoadFile,
