@@ -34,7 +34,6 @@ define (function() {
     }
     
     function getFileName() {
-        alert(_fileName);
         return _fileName;
     }
     

@@ -561,7 +561,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
             kinetic_obj.templayer.removeChildren();
             kinetic_obj.templayer.draw();
             kinetic_obj.drawing = false;
-            kinetic_obj.drawRectElement(kinetic_obj.layer, kinetic_obj.draw_start_x, kinetic_obj.draw_start_y, kinetic_obj.draw_end_x, kinetic_obj.draw_end_y, '#aaaaaa');          
+            kinetic_obj.drawRectElement(kinetic_obj.layer, kinetic_obj.draw_start_x, kinetic_obj.draw_start_y, kinetic_obj.draw_end_x, kinetic_obj.draw_end_y, '', '#aaaaaa');          
             break;      
           }
         }
@@ -600,7 +600,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
                   item = canvas_util.selectShape(this.layer, x, y);                  
                 }
               
-                kinetic_obj.changeDragDrop(false);
+                //kinetic_obj.changeDragDrop(false);
                 this.latestitem = item;
                 // if the cursor is currently hovering on top
                 if (item != null && item instanceof Kinetic.Text) {
@@ -638,7 +638,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
             
             case TOOL_RECT:
               {
-                this.drawRectElement(this.templayer, this.draw_start_x, this.draw_start_y, x, y, '#aaaaaa');                    
+                this.drawRectElement(this.templayer, this.draw_start_x, this.draw_start_y, x, y, '', '#aaaaaa');                    
                 break;
               }        
           }
