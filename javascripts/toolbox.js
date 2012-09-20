@@ -9,8 +9,8 @@ define (function() {
     // TOOLBOX_CONSTS: Model of MVC pattern. Defines button captions and their respective ids (id being a unique 'name' for the button).
     // Related IDS and LABELS must be in a same array index in order to things work.
     var TOOLBOX_CONSTS = {
-        TOOLBUTTONS_IDS: ['select', 'move', 'rect', 'arrow', 'settext', 'delete', 'load', 'save'], 
-        TOOLBUTTON_LABELS: ['Select', 'Move', 'Rect', 'Arrow', 'Text', 'Delete', 'Load', 'Save']
+        TOOLBUTTONS_IDS: ['load', 'save', 'select', 'move', 'rect', 'arrow', 'settext', 'delete', 'color'], 
+        TOOLBUTTON_LABELS: ['Load', 'Save', 'Select', 'Move', 'Rect', 'Arrow', 'Text', 'Delete', 'Color']
     };
     
     var toolbox_obj = {
@@ -41,20 +41,15 @@ define (function() {
      * 
      */
     function InitilizeToolBox() {
-        $("body")
-        .append('<div id="radio"><table id="buttontable" border="0" width="800"><tr>');
         for (var i = 0; i < TOOLBOX_CONSTS.TOOLBUTTONS_IDS.length; i++) {
-            $('#buttontable')
-            .append('<th width="50"><input type="radio" id="radio' + (+i + 1) + '" name="radio" value="' + TOOLBOX_CONSTS.TOOLBUTTONS_IDS[i] + '" /><label for="radio' + (+i + 1) + '">' + TOOLBOX_CONSTS.TOOLBUTTON_LABELS[i] + '</label></th>');
+            $('#radio')
+            .append('<input type="radio" id="radio' + (+i + 1) + '" name="radio" value="' + TOOLBOX_CONSTS.TOOLBUTTONS_IDS[i] + '" /><label for="radio' + (+i + 1) + '">' + TOOLBOX_CONSTS.TOOLBUTTON_LABELS[i] + '</label>');
             $('#radio' + (+i + 1)).on("click", function(event){
                 toolSelection($(this));
             });          
-        }
-        $("body")
-        .append('</tr></table></div><p></p><div id="container"></div>');
-        
+        }        
         $(function() {
-            $( "#radio" ).buttonset();
+            $("#radio").buttonset();
         });
     }
     
@@ -69,6 +64,8 @@ define (function() {
     function SetCallBack(refSelectedTool) {
         toolbox_obj.selected_callback = refSelectedTool;
     }
+    
+    InitilizeToolBox();
     
     // Self-evident object exposed out of the module.
     return {

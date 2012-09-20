@@ -8,12 +8,12 @@ require.config({
  *  Entry point for draw screen 
  */
 window.onload = function() {
-    require(['toolbox', 'canvas_handler', 'dropbox_handler'], function(toolbox, canvas_handler, dropbox_handler) {     
-        toolbox.init();
-        canvas_handler.init(); 
-        toolbox.setcallback(canvas_handler.toolboxcallback);
+    
+    require(['toolbox', 'canvas_handler', 'dropbox_handler', 'fileNameBar'], function(toolbox, canvas_handler, dropbox_handler, fileNameBar) {     
         // Check if filename was given as a parameter and give file handler the file name.
-        var fileparameter = window.location.search.replace( "?filename=", "" );
+        var fileparameter = window.location.search.replace('?filename=', '' );        
+        fileNameBar.init(fileparameter);
+        toolbox.setcallback(canvas_handler.toolboxcallback);
         canvas_handler.setcurrentfilename(fileparameter);
         canvas_handler.waitdialog(true);
         dropbox_handler.authenticate();

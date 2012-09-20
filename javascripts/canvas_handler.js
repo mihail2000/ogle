@@ -1,4 +1,4 @@
-define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'javascripts/lib/kineticjs-4.0.1.js', 'javascripts/lib/modernizr.custom.90822.js', 'shapeToXML'], function(dropbox_handler, canvas_util, popupMenu) {
+define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'javascripts/lib/kineticjs-4.0.1.js', 'javascripts/lib/modernizr.custom.90822.js', 'javascripts/lib/colorpicker/colorpicker.js', 'shapeToXML'], function(dropbox_handler, canvas_util, popupMenu, fileNameBar) {
 
 var TOOL_SELECT = 'select';
 var TOOL_MOVE = 'move';
@@ -9,6 +9,7 @@ var TOOL_ADDCHILD = 'addchild';
 var TOOL_DELETE = 'delete';
 var TOOL_LOAD = 'load';
 var TOOL_SAVE = 'save';
+var TOOL_COLOR = 'color';
 var CONST_SELECTION_ITEM_SIZE = 6;
 
 var RESIZE_TOP_LEFT = 1;
@@ -92,6 +93,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
     text_edit_string: '',
     cursorVisible: false,
     selectionVisible: false,
+    itemSelected: null,
     resizeEnabled: 0,
     showCursor: function() {
       if (kinetic_obj.cursorVisible) {
@@ -196,7 +198,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
       drawtolayer.add(arrow);
       drawtolayer.draw();
     },
-    drawRectElement: function(drawtolayer, startx, starty, endx, endy, text) {
+    drawRectElement: function(drawtolayer, startx, starty, endx, endy, text, fill) {
       var rectx = 0;
       var recty = 0;
       var rectheight = 0;
@@ -225,12 +227,13 @@ var RESIZE_BOTTOM_RIGHT = 8;
       if (rectwidth < 50) {
         rectwidth = 50;              
       }
+            
       var rect = new Kinetic.Text({
         x: rectx,
         y: recty,
         width: rectwidth,
         height: rectheight,
-        fill: '#aaaaaa',
+        fill: fill,
         stroke: 'black',
         fontSize: 14,
         fontFamily: 'Calibri',
@@ -392,7 +395,14 @@ var RESIZE_BOTTOM_RIGHT = 8;
       switch (kinetic_obj.currentTool) {
         case TOOL_SELECT:
           {
+            var item = canvas_util.selectShape(kinetic_obj.layer, x, y);
+            if (item != null) {
+              kinetic_obj.itemSelected = item;
+              this.displaySelection(item);  
+            }
             
+
+           /* 
             if (!popupMenu.visible) {
               var item = canvas_util.selectShape(kinetic_obj.layer, x, y);
               if (item != null) {
@@ -406,7 +416,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
             } else {
               popupMenu.selectMenuAction(kinetic_obj.popupMenu_layer, x, y);
             }
-            
+            */
             break;
           }
         case TOOL_MOVE:
@@ -551,7 +561,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
             kinetic_obj.templayer.removeChildren();
             kinetic_obj.templayer.draw();
             kinetic_obj.drawing = false;
-            kinetic_obj.drawRectElement(kinetic_obj.layer, kinetic_obj.draw_start_x, kinetic_obj.draw_start_y, kinetic_obj.draw_end_x, kinetic_obj.draw_end_y);          
+            kinetic_obj.drawRectElement(kinetic_obj.layer, kinetic_obj.draw_start_x, kinetic_obj.draw_start_y, kinetic_obj.draw_end_x, kinetic_obj.draw_end_y, '#aaaaaa');          
             break;      
           }
         }
@@ -594,21 +604,8 @@ var RESIZE_BOTTOM_RIGHT = 8;
                 this.latestitem = item;
                 // if the cursor is currently hovering on top
                 if (item != null && item instanceof Kinetic.Text) {
-                  this.selectionVisible = true;
-                  this.templayer.removeChildren();
-                  // Top - center
-                  this.drawSelectionElement(kinetic_obj.templayer, item.getX() + (item.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + (item.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
-                  // Left - center
-                  this.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() + (item.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE,item.getY() + (item.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE);
-                  // Bottom - center
-                  this.drawSelectionElement(kinetic_obj.templayer, item.getX() + (item.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE + item.getHeight(), item.getX() + (item.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE + item.getHeight());
-                  // Right - center
-                  this.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE + item.getWidth(), item.getY() + (item.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE + item.getWidth(), item.getY() + (item.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE);
-      
-                  this.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
-                  this.drawSelectionElement(kinetic_obj.templayer, item.getX() + item.getWidth() - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + item.getWidth() + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
-                  this.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() + CONST_SELECTION_ITEM_SIZE);
-                  this.drawSelectionElement(kinetic_obj.templayer, item.getX() + item.getWidth() - CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() - CONST_SELECTION_ITEM_SIZE, item.getX() + item.getWidth() + CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() + CONST_SELECTION_ITEM_SIZE);
+                  
+                  this.displaySelection(item);
                 } else if (item != null && item instanceof Kinetic.Line) {
                   this.selectionVisible = true;
                   this.templayer.removeChildren();
@@ -641,7 +638,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
             
             case TOOL_RECT:
               {
-                this.drawRectElement(this.templayer, this.draw_start_x, this.draw_start_y, x, y);                    
+                this.drawRectElement(this.templayer, this.draw_start_x, this.draw_start_y, x, y, '#aaaaaa');                    
                 break;
               }        
           }
@@ -649,6 +646,24 @@ var RESIZE_BOTTOM_RIGHT = 8;
         }
         
       }      
+    },
+    displaySelection: function(item) {
+        this.selectionVisible = true;
+        
+        this.templayer.removeChildren();
+        // Top - center
+        this.drawSelectionElement(kinetic_obj.templayer, item.getX() + (item.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + (item.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
+        // Left - center
+        this.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() + (item.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE,item.getY() + (item.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE);
+        // Bottom - center
+        this.drawSelectionElement(kinetic_obj.templayer, item.getX() + (item.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE + item.getHeight(), item.getX() + (item.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE + item.getHeight());
+        // Right - center
+        this.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE + item.getWidth(), item.getY() + (item.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE + item.getWidth(), item.getY() + (item.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE);
+
+        this.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
+        this.drawSelectionElement(kinetic_obj.templayer, item.getX() + item.getWidth() - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + item.getWidth() + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
+        this.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() + CONST_SELECTION_ITEM_SIZE);
+        this.drawSelectionElement(kinetic_obj.templayer, item.getX() + item.getWidth() - CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() - CONST_SELECTION_ITEM_SIZE, item.getX() + item.getWidth() + CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() + CONST_SELECTION_ITEM_SIZE);
     },
     keyDownHandler: function(event) {
       if (kinetic_obj.text_edit_shape != null) {
@@ -705,7 +720,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
       if (writeToFile != '') {
         //require(['dropbox_handler'], function(dropbox_handler) {
             dropbox_handler.authenticate();
-            dropbox_handler.savecontents(kinetic_obj.CurrentFileName, writeToFile, kinetic_obj.savefilecallback);
+            dropbox_handler.savecontents(fileNameBar.getFileName(), writeToFile, kinetic_obj.savefilecallback);
         //});    
       }
 
@@ -720,11 +735,12 @@ var RESIZE_BOTTOM_RIGHT = 8;
               var y = parseInt($(this).attr('y'));
               var width = parseInt($(this).attr('width'));
               var height = parseInt($(this).attr('height'));
+              var fill = $(this).attr('fill');
               var text = '';
               if ($(this).text() != '') {
                 text = $(this).text();
               }
-              kinetic_obj.drawRectElement(kinetic_obj.layer, x, y, x + width, y + height, text);
+              kinetic_obj.drawRectElement(kinetic_obj.layer, x, y, x + width, y + height, text, fill);
               break;
             }
           
@@ -770,6 +786,26 @@ var RESIZE_BOTTOM_RIGHT = 8;
       el.addEventListener('mousemove', function(event) { kinetic_obj.drawMoveHandler(event); });    
     }
     document.addEventListener('keydown', function(event) { kinetic_obj.keyDownHandler(event); });
+    
+    $('#radio9').ColorPicker({
+     color: '#0000ff',
+     onShow: function (colpkr) {
+             $(colpkr).fadeIn(200);
+             return false;
+     },
+     onHide: function (colpkr) {
+             $(colpkr).fadeOut(200);
+             return false;
+     },
+     onChange: function(hsb, hex, rgb) {
+       if (kinetic_obj.itemSelected != null) {
+         kinetic_obj.itemSelected.setFill(hex);
+         kinetic_obj.layer.draw();
+       }
+     }
+     });
+
+    
   }
   
   function SetCurrentFileName(filename) {
@@ -779,7 +815,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
   function ToolBoxCallback(item) {
     kinetic_obj.currentTool = item;
     
-    switch (kinetic_obj.currentTool) {
+    switch (item) {
       case TOOL_SAVE: {
           kinetic_obj.SaveFile(kinetic_obj.layer);
         break;
@@ -789,6 +825,11 @@ var RESIZE_BOTTOM_RIGHT = 8;
         kinetic_obj.changeDragDrop(true);        
         break;
       }
+      case TOOL_COLOR:
+      {
+        console.log(kinetic_obj.itemSelected);
+       break;
+      }
     default:
       {
         kinetic_obj.changeDragDrop(false);
@@ -796,6 +837,8 @@ var RESIZE_BOTTOM_RIGHT = 8;
       }
     }
   }
+  
+  init();
   
   return {
     init: init,
