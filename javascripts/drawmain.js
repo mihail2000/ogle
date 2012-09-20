@@ -15,7 +15,6 @@ window.onload = function() {
         fileNameBar.init(fileparameter);
         toolbox.setcallback(canvas_handler.toolboxcallback);
         canvas_handler.setcurrentfilename(fileparameter);
-        canvas_handler.waitdialog(true);
         dropbox_handler.authenticate();
         dropbox_handler.loadcontents(fileparameter, canvas_handler.loadfilecallback);
     });

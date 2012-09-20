@@ -1,4 +1,4 @@
-define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'javascripts/lib/kineticjs-4.0.1.js', 'javascripts/lib/modernizr.custom.90822.js', 'javascripts/lib/colorpicker/colorpicker.js', 'shapeToXML'], function(dropbox_handler, canvas_util, popupMenu, fileNameBar) {
+define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWaitDialog', 'javascripts/lib/kineticjs-4.0.1.js', 'javascripts/lib/modernizr.custom.90822.js', 'javascripts/lib/colorpicker/colorpicker.js', 'shapeToXML'], function(dropbox_handler, canvas_util, popupMenu, fileNameBar, canvasWaitDialog) {
 
 var TOOL_SELECT = 'select';
 var TOOL_MOVE = 'move';
@@ -21,123 +21,72 @@ var RESIZE_BOTTOM_LEFT = 6;
 var RESIZE_BOTTOM_CENTER = 7;
 var RESIZE_BOTTOM_RIGHT = 8;
 
-  var wait_dialog = {
-    timerID: 0,
-    rect: null,
-    txt: '',
-    cycle: 1,
-    UpdateLoading: function() {
-      wait_dialog.cycle++;
-      
-      if (wait_dialog.cycle > 3) {
-        wait_dialog.cycle = 1;
-      }
-      
-      txt = 'Loading';
-      for (var i = 0; i < wait_dialog.cycle; i++) {
-        txt += '.';
-      }
-      
-      rect.setText(txt);
-      kinetic_obj.templayer.draw();
-    },
-    WaitDialog: function(displayDialog) {
-      if (displayDialog) {
-          rect = new Kinetic.Text({
-          x: 200,
-          y: 200,
-          width: 300,
-          height: 100,
-          fill: '#ffffff',
-          stroke: 'white',
-          fontSize: 36,
-          fontFamily: 'Calibri',
-          textFill: '#555',
-          strokeWidth: 0,
-          cornerRadius: 0,
-          padding: 20,
-          align: 'left',
-          text: 'Loading'
-        });
-        
-        // add the shape to the layer
-        kinetic_obj.templayer.add(rect);
-        kinetic_obj.templayer.draw();
-        
-        this.timerID = setInterval(wait_dialog.UpdateLoading, 100);
-        
-      } else {
-        clearInterval(this.timerID);
-        kinetic_obj.templayer.removeChildren();
-        kinetic_obj.templayer.draw();
-        
-      }
-    }    
-  };
+    var stage = null;
+    var layer = new Kinetic.Layer();
+    var templayer = new Kinetic.Layer();
+    var popupMenu_layer = new Kinetic.Layer();
+    var currentTool = '';
+    var drawing = false;
+    var latestitem = null;
+    var draw_start_x = 0;
+    var draw_start_y = 0;
+    var draw_end_x = 0;
+    var draw_end_y = 0;
+    var CurrentFileName = '';
+    var text_edit_shape = null;
+    var text_edit_string = '';
+    var cursorVisible = false;
+    var selectionVisible = false;
+    var itemSelected = null;
+    var resizeEnabled = 0;
     
-  var kinetic_obj = {
-    stage: null,
-    layer: new Kinetic.Layer(),
-    templayer: new Kinetic.Layer(),
-    popupMenu_layer: new Kinetic.Layer(),
-    popupMenu: null,
-    currentTool: '',
-    drawing: false,
-    latestitem: null,
-    draw_start_x: 0,
-    draw_start_y: 0,
-    draw_end_x: 0,
-    draw_end_y: 0,
-    CurrentFileName: '',
-    text_edit_shape: null,
-    text_edit_string: '',
-    cursorVisible: false,
-    selectionVisible: false,
-    itemSelected: null,
-    resizeEnabled: 0,
-    showCursor: function() {
-      if (kinetic_obj.cursorVisible) {
-        kinetic_obj.text_edit_shape.setText(kinetic_obj.text_edit_string);
-        kinetic_obj.cursorVisible = false;
+    function showCursor()  {
+      if (cursorVisible) {
+        text_edit_shape.setText(text_edit_string);
+        cursorVisible = false;
       } else {
-        var newtext = kinetic_obj.text_edit_string + '|';
-        kinetic_obj.text_edit_shape.setText(newtext);
-        kinetic_obj.cursorVisible = true;
+        var newtext = text_edit_string + '|';
+        text_edit_shape.setText(newtext);
+        cursorVisible = true;
       }
-      kinetic_obj.layer.draw(); 
-    },
+      layer.draw(); 
+    }
+    
     // Select the shape user clicked / touched
-    changeText: function(shape) {
-      if (kinetic_obj.text_edit_shape == null) {
-          kinetic_obj.text_edit_shape = shape;
-          kinetic_obj.text_edit_string = '';
+    function changeText(shape) {
+      if (text_edit_shape == null) {
+          text_edit_shape = shape;
+          text_edit_string = '';
     
-          kinetic_obj.text_edit_string = kinetic_obj.text_edit_shape.getText();
+          text_edit_string = text_edit_shape.getText();
     
           // In non-touch environments, text is edited directly to the shape
           if (!Modernizr.touch) {
-            kinetic_obj.cursorTimerID = setInterval(function(){kinetic_obj.showCursor()}, 500);                                
-            kinetic_obj.text_edit_shape.setFill('#ffffff');
+            cursorTimerID = setInterval(function(){showCursor()}, 500);                                
+            text_edit_shape.setFill('#ffffff');
           // In touch environments, display text input box (TODO: figure out if there is more elegant way)
           } else {
-            var newText = prompt('Enter new text', kinetic_obj.text_edit_shape.getText());
-            kinetic_obj.text_edit_shape.setText(newText);
-            kinetic_obj.text_edit_shape = null;
+            var newText = prompt('Enter new text', text_edit_shape.getText());
+            text_edit_shape.setText(newText);
+            text_edit_shape = null;
           }
       }
-    },
-    getRelativeCoords: function (event) {
+    }
+    
+    function getRelativeCoords(event) {
       if (event.offsetX !== undefined && event.offsetY !== undefined) { return { x: event.offsetX, y: event.offsetY }; }
       return { x: event.layerX, y: event.layerY };
-    },
-    changeDragDrop: function(changeval) {
-      var shapes = kinetic_obj.layer.getChildren();
+    }
+    
+    function changeDragDrop(changeval) {
+      var shapes = layer.getChildren();
       for (var i = 0; i < shapes.length; i++)
       {
         shapes[i].setDraggable(changeval);
       }
-    },
-    drawSelectionElement: function(drawtolayer, startx, starty, endx, endy, text) {
+    }
+    
+    function drawSelectionElement(drawtolayer, startx, starty, endx, endy, text) {
       var rectx = 0;
       var recty = 0;
               
@@ -175,16 +124,18 @@ var RESIZE_BOTTOM_RIGHT = 8;
       
       drawtolayer.add(rect);
       drawtolayer.draw();  
-    },
-    drawArrowElement: function(drawtolayer, x1, y1, x2, y2) {
+    }
+    
+    function drawArrowElement(drawtolayer, x1, y1, x2, y2) {
       var points = [];
       points.push(x1);
       points.push(y1);
       points.push(x2);
       points.push(y2);
-      kinetic_obj.drawLineElement(drawtolayer, points);  
-    },
-    drawLineElement: function(drawtolayer, points) {
+      drawLineElement(drawtolayer, points);  
+    }
+    
+    function drawLineElement(drawtolayer, points) {
       var x = 0;
       var y = 0;
       var arrow = new Kinetic.Line({
@@ -193,12 +144,13 @@ var RESIZE_BOTTOM_RIGHT = 8;
         strokeWidth: 2
         });
     
-      this.latestitem = arrow;
+      latestitem = arrow;
       // add the shape to the layer
       drawtolayer.add(arrow);
       drawtolayer.draw();
-    },
-    drawRectElement: function(drawtolayer, startx, starty, endx, endy, text, fill) {
+    }
+    
+    function drawRectElement(drawtolayer, startx, starty, endx, endy, text, fill) {
       var rectx = 0;
       var recty = 0;
       var rectheight = 0;
@@ -259,122 +211,124 @@ var RESIZE_BOTTOM_RIGHT = 8;
       drawtolayer.add(rect);
       drawtolayer.draw();
     
-    },    
-    resizeElement: function(x, y) {
+    }
+    
+    function resizeElement(x, y) {
         var newheight = 0;
         var newwidth = 0;
         var newX = 0;
         var newY = 0;
         
-        if (this.latestitem instanceof Kinetic.Text) {
-          switch (this.resizeEnabled) {
+        if (latestitem instanceof Kinetic.Text) {
+          switch (resizeEnabled) {
             case RESIZE_TOP_LEFT:
             case RESIZE_TOP_RIGHT:
             case RESIZE_TOP_CENTER: {
-               if (y > this.latestitem.getY()) {
-                newheight = this.latestitem.getHeight() - (y - this.latestitem.getY());
+               if (y > latestitem.getY()) {
+                newheight = latestitem.getHeight() - (y - latestitem.getY());
               } else {
-                newheight = this.latestitem.getHeight() + (this.latestitem.getY() - y);                
+                newheight = latestitem.getHeight() + (latestitem.getY() - y);                
               }
               break;
             }
            case RESIZE_BOTTOM_LEFT:
            case RESIZE_BOTTOM_RIGHT:
             case RESIZE_BOTTOM_CENTER: {
-              if (y > (this.latestitem.getY() + this.latestitem.getHeight()) ) {
-                newheight = this.latestitem.getHeight() + (y - (this.latestitem.getY() + this.latestitem.getHeight()));
+              if (y > (latestitem.getY() + latestitem.getHeight()) ) {
+                newheight = latestitem.getHeight() + (y - (latestitem.getY() + latestitem.getHeight()));
               } else {
-                newheight = this.latestitem.getHeight() - ((this.latestitem.getY() + this.latestitem.getHeight()) - y);
+                newheight = latestitem.getHeight() - ((latestitem.getY() + latestitem.getHeight()) - y);
               }
               break;
             }
           }
           
-          switch (this.resizeEnabled) {
+          switch (resizeEnabled) {
             case RESIZE_TOP_LEFT:
             case RESIZE_BOTTOM_LEFT:
             case RESIZE_LEFT_CENTER: {
-               if (x > this.latestitem.getX()) {
-                newwidth = this.latestitem.getWidth() - (x - this.latestitem.getX());
+               if (x > latestitem.getX()) {
+                newwidth = latestitem.getWidth() - (x - latestitem.getX());
               } else {
-                newwidth = this.latestitem.getWidth() + (this.latestitem.getX() - x);                
+                newwidth = latestitem.getWidth() + (latestitem.getX() - x);                
               }
               break;
             }
           case RESIZE_TOP_RIGHT: 
           case RESIZE_BOTTOM_RIGHT:
           case RESIZE_RIGHT_CENTER: {
-            if (x > (this.latestitem.getX() + this.latestitem.getWidth() )) {
-              newwidth = this.latestitem.getWidth() + (x -(this.latestitem.getX() + this.latestitem.getWidth()));
+            if (x > (latestitem.getX() + latestitem.getWidth() )) {
+              newwidth = latestitem.getWidth() + (x -(latestitem.getX() + latestitem.getWidth()));
             } else {
-              newwidth = this.latestitem.getWidth() + (x -(this.latestitem.getX() + this.latestitem.getWidth()));                
+              newwidth = latestitem.getWidth() + (x -(latestitem.getX() + latestitem.getWidth()));                
             }
             break;  
             }
             
           }
   
-          switch (this.resizeEnabled) {
+          switch (resizeEnabled) {
             case RESIZE_TOP_LEFT:{
               newX = x;
               newY = y;
               break;
             }
            case RESIZE_BOTTOM_LEFT: {
-            newY = this.latestitem.getY();
+            newY = latestitem.getY();
             newX = x;
             break;
            }
            case RESIZE_TOP_RIGHT: {
             newY = y;
-            newX = this.latestitem.getX();
+            newX = latestitem.getX();
   
             break;
            }
             case RESIZE_BOTTOM_RIGHT: {
-            newY = this.latestitem.getY();
-            newX = this.latestitem.getX();
+            newY = latestitem.getY();
+            newX = latestitem.getX();
             break;
             }
             case RESIZE_TOP_CENTER: {
-             newX = this.latestitem.getX();
-             newwidth = this.latestitem.getWidth();
+             newX = latestitem.getX();
+             newwidth = latestitem.getWidth();
              newY = y;
              break; 
             }
             case RESIZE_BOTTOM_CENTER: {
-             newX = this.latestitem.getX();
-             newwidth = this.latestitem.getWidth();
-             newY = this.latestitem.getY();
+             newX = latestitem.getX();
+             newwidth = latestitem.getWidth();
+             newY = latestitem.getY();
              break; 
             }
             case RESIZE_LEFT_CENTER: {
-             newY = this.latestitem.getY();
-             newheight = this.latestitem.getHeight();
+             newY = latestitem.getY();
+             newheight = latestitem.getHeight();
              newX = x;
              break; 
             }
             case RESIZE_RIGHT_CENTER: {
-             newY = this.latestitem.getY();
-             newheight = this.latestitem.getHeight();
-             newX = this.latestitem.getX();           
+             newY = latestitem.getY();
+             newheight = latestitem.getHeight();
+             newX = latestitem.getX();           
              break; 
             }
           }
   
-          this.latestitem.setWidth(newwidth);
-          this.latestitem.setHeight(newheight);
-          this.latestitem.setX(newX);
-          this.latestitem.setY(newY);        
-      } else if (this.latestitem instanceof Kinetic.Line) {
+          latestitem.setWidth(newwidth);
+          latestitem.setHeight(newheight);
+          latestitem.setX(newX);
+          latestitem.setY(newY);        
+      } else if (latestitem instanceof Kinetic.Line) {
         
       }
 
         
-        this.layer.draw();
+        layer.draw();
       
-    },
-    drawDownHandler: function(event) {
+    }
+    
+    function drawDownHandler(event) {
       var x = 0;
       var y = 0;
 
@@ -382,51 +336,51 @@ var RESIZE_BOTTOM_RIGHT = 8;
         x = event.pageX;
         y = event.pageY;
       } else {
-        var relativecoord = kinetic_obj.getRelativeCoords(event);
+        var relativecoord = getRelativeCoords(event);
         x = relativecoord.x;
         y = relativecoord.y;
       }
       
       popupMenu.selectionListener(x, y);
       
-      console.log('currenttool ' + kinetic_obj.currentTool);
+      console.log('currenttool ' + currentTool);
       console.log(popupMenu);
       
-      switch (kinetic_obj.currentTool) {
+      switch (currentTool) {
         case TOOL_SELECT:
           {
-            var item = canvas_util.selectShape(kinetic_obj.layer, x, y);
+            var item = canvas_util.selectShape(layer, x, y);
             if (item != null) {
-              kinetic_obj.itemSelected = item;
-              this.displaySelection(item);  
+              itemSelected = item;
+              displaySelection(item);  
             }
             
 
            /* 
             if (!popupMenu.visible) {
-              var item = canvas_util.selectShape(kinetic_obj.layer, x, y);
+              var item = canvas_util.selectShape(layer, x, y);
               if (item != null) {
-                popupMenu.showPopup(kinetic_obj.popupMenu_layer, x, y, function(id) {
+                popupMenu.showPopup(popupMenu_layer, x, y, function(id) {
                   alert('popup selected: ' + id);
                 });          
               } else {
                 console.log('hide popup');
-                popupMenu.hidePopup(kinetic_obj.popupMenu_layer);
+                popupMenu.hidePopup(popupMenu_layer);
               }
             } else {
-              popupMenu.selectMenuAction(kinetic_obj.popupMenu_layer, x, y);
+              popupMenu.selectMenuAction(popupMenu_layer, x, y);
             }
             */
             break;
           }
         case TOOL_MOVE:
           {
-            if (this.selectionVisible) {
-              var item = canvas_util.selectShape(kinetic_obj.templayer, x, y);
-              if (item != null && this.latestitem != null && this.latestitem instanceof Kinetic.Text) {
-                this.selectionVisible = false;
-                this.templayer.removeChildren();
-                this.templayer.draw();
+            if (selectionVisible) {
+              var item = canvas_util.selectShape(templayer, x, y);
+              if (item != null && latestitem != null && latestitem instanceof Kinetic.Text) {
+                selectionVisible = false;
+                templayer.removeChildren();
+                templayer.draw();
                 console.log('resize enabled');
                 // Decide how to do resizing, i.e. from which spot user started the resize
                 //var Y_Spot =;
@@ -435,15 +389,15 @@ var RESIZE_BOTTOM_RIGHT = 8;
                 var CONST_CENTER_Y = 3;
                  function Get_Y_Spot(y) {
                   var retval = 0;
-                  if (canvas_util.isBetween(y, kinetic_obj.latestitem.getY() + kinetic_obj.latestitem.getHeight() - CONST_SELECTION_ITEM_SIZE, kinetic_obj.latestitem.getY() + kinetic_obj.latestitem.getHeight() + CONST_SELECTION_ITEM_SIZE) ) {                    
+                  if (canvas_util.isBetween(y, latestitem.getY() + latestitem.getHeight() - CONST_SELECTION_ITEM_SIZE, latestitem.getY() + latestitem.getHeight() + CONST_SELECTION_ITEM_SIZE) ) {                    
                       retval = CONST_BOTTOM_Y;                  
                   }
 
-                  if (canvas_util.isBetween(y, kinetic_obj.latestitem.getY() - CONST_SELECTION_ITEM_SIZE, kinetic_obj.latestitem.getY() + CONST_SELECTION_ITEM_SIZE) ) {                    
+                  if (canvas_util.isBetween(y, latestitem.getY() - CONST_SELECTION_ITEM_SIZE, latestitem.getY() + CONST_SELECTION_ITEM_SIZE) ) {                    
                       retval = CONST_TOP_Y;                  
                   }
 
-                  if (canvas_util.isBetween(y, kinetic_obj.latestitem.getY() + (kinetic_obj.latestitem.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, kinetic_obj.latestitem.getY() + (kinetic_obj.latestitem.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE) ) {                    
+                  if (canvas_util.isBetween(y, latestitem.getY() + (latestitem.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, latestitem.getY() + (latestitem.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE) ) {                    
                       retval = CONST_CENTER_Y;                  
                   }
                   
@@ -451,52 +405,52 @@ var RESIZE_BOTTOM_RIGHT = 8;
                 }
                 
                 // TODO: There's a more beautiful way of doing this
-                if (canvas_util.isBetween(x, this.latestitem.getX() - CONST_SELECTION_ITEM_SIZE, this.latestitem.getX() + CONST_SELECTION_ITEM_SIZE) ) {
+                if (canvas_util.isBetween(x, latestitem.getX() - CONST_SELECTION_ITEM_SIZE, latestitem.getX() + CONST_SELECTION_ITEM_SIZE) ) {
                   // Selection is on the left side
                   switch (Get_Y_Spot(y)) {
                     case CONST_BOTTOM_Y: {
-                       this.resizeEnabled = RESIZE_BOTTOM_LEFT;
+                       resizeEnabled = RESIZE_BOTTOM_LEFT;
                        break;
                     }
                     case CONST_TOP_Y: {
-                       this.resizeEnabled = RESIZE_TOP_LEFT;  
+                       resizeEnabled = RESIZE_TOP_LEFT;  
                       break;
                     }
                     case CONST_CENTER_Y: {
-                      this.resizeEnabled = RESIZE_LEFT_CENTER;
+                      resizeEnabled = RESIZE_LEFT_CENTER;
                       break;
                     }
                   }
-                } else if (canvas_util.isBetween(x, this.latestitem.getX() + this.latestitem.getWidth() - CONST_SELECTION_ITEM_SIZE, this.latestitem.getX() + this.latestitem.getWidth() + CONST_SELECTION_ITEM_SIZE)) {
+                } else if (canvas_util.isBetween(x, latestitem.getX() + latestitem.getWidth() - CONST_SELECTION_ITEM_SIZE, latestitem.getX() + latestitem.getWidth() + CONST_SELECTION_ITEM_SIZE)) {
                   // Selection is on the right side
                   switch (Get_Y_Spot(y)) {
                     case CONST_BOTTOM_Y: {
-                       this.resizeEnabled = RESIZE_BOTTOM_RIGHT;
+                       resizeEnabled = RESIZE_BOTTOM_RIGHT;
                        break;
                     }
                     case CONST_TOP_Y: {
-                       this.resizeEnabled = RESIZE_TOP_RIGHT;  
+                       resizeEnabled = RESIZE_TOP_RIGHT;  
                       break;
                     }
                     case CONST_CENTER_Y: {
-                      this.resizeEnabled = RESIZE_RIGHT_CENTER;
+                      resizeEnabled = RESIZE_RIGHT_CENTER;
                       break;
                     }
                   }
-                } else if (canvas_util.isBetween(x, this.latestitem.getX() + (this.latestitem.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, this.latestitem.getX() + (this.latestitem.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE) ) {
+                } else if (canvas_util.isBetween(x, latestitem.getX() + (latestitem.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, latestitem.getX() + (latestitem.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE) ) {
                   // Selection is in the middle section
                                     switch (Get_Y_Spot(y)) {
                     case CONST_BOTTOM_Y: {
-                       this.resizeEnabled = RESIZE_BOTTOM_CENTER;
+                       resizeEnabled = RESIZE_BOTTOM_CENTER;
                        break;
                     }
                     case CONST_TOP_Y: {
-                       this.resizeEnabled = RESIZE_TOP_CENTER;  
+                       resizeEnabled = RESIZE_TOP_CENTER;  
                       break;
                     }
                   }
                 }
-                console.log('resize corner: ' + this.resizeEnabled);
+                console.log('resize corner: ' + resizeEnabled);
               }
             }
             break;
@@ -504,28 +458,28 @@ var RESIZE_BOTTOM_RIGHT = 8;
         case TOOL_ARROW:
         case TOOL_RECT:
           {
-            //kinetic_obj.popupMenu.hidePopup(popupMenu_layer);
-            kinetic_obj.drawing = true;
-            kinetic_obj.draw_start_x = x;
-            kinetic_obj.draw_start_y = y;              
+            //popupMenu.hidePopup(popupMenu_layer);
+            drawing = true;
+            draw_start_x = x;
+            draw_start_y = y;              
             break;
           }
         
         case TOOL_TEXT: // Change text of the selected shape
           {
-            //kinetic_obj.popupMenu.hidePopup(popupMenu_layer);
-            kinetic_obj.changeText(canvas_util.selectShape(kinetic_obj.layer, x, y));
+            //popupMenu.hidePopup(popupMenu_layer);
+            changeText(canvas_util.selectShape(layer, x, y));
             break;
           }
         
         case TOOL_DELETE:
           {
-            popupMenu.hidePopup(this.popupMenu_layer);
-            var itemToDelete = canvas_util.selectShape(this.layer, x, y);
+            popupMenu.hidePopup(popupMenu_layer);
+            var itemToDelete = canvas_util.selectShape(layer, x, y);
             
             if (itemToDelete != null) {
-              this.layer.remove(itemToDelete);
-              this.layer.draw();
+              layer.remove(itemToDelete);
+              layer.draw();
               itemToDelete = null;
             }
             break;
@@ -533,41 +487,43 @@ var RESIZE_BOTTOM_RIGHT = 8;
           
         default:
         {
-          popupMenu.hidePopup(this.popupMenu_layer);
+          popupMenu.hidePopup(popupMenu_layer);
           break;
         }
       }
-    },
-    drawEndHandler: function(event) {
-      this.resizeEnabled = 0;
-      if (kinetic_obj.drawing) {
+    }
+    
+    function drawEndHandler(event) {
+      resizeEnabled = 0;
+      if (drawing) {
         if (!Modernizr.touch) {
-          var relativecoord = kinetic_obj.getRelativeCoords(event);
-          kinetic_obj.draw_end_x = relativecoord.x;
-          kinetic_obj.draw_end_y = relativecoord.y;  
+          var relativecoord = getRelativeCoords(event);
+          draw_end_x = relativecoord.x;
+          draw_end_y = relativecoord.y;  
         } 
     
-        switch (kinetic_obj.currentTool) {
+        switch (currentTool) {
           case TOOL_ARROW:
           {
-            kinetic_obj.templayer.removeChildren();
-            kinetic_obj.templayer.draw();
-            kinetic_obj.drawing = false;
-            kinetic_obj.drawArrowElement(kinetic_obj.layer, kinetic_obj.draw_start_x, kinetic_obj.draw_start_y, kinetic_obj.draw_end_x, kinetic_obj.draw_end_y);
+            templayer.removeChildren();
+            templayer.draw();
+            drawing = false;
+            drawArrowElement(layer, draw_start_x, draw_start_y, draw_end_x, draw_end_y);
             break;    
           }
           case TOOL_RECT:
           {
-            kinetic_obj.templayer.removeChildren();
-            kinetic_obj.templayer.draw();
-            kinetic_obj.drawing = false;
-            kinetic_obj.drawRectElement(kinetic_obj.layer, kinetic_obj.draw_start_x, kinetic_obj.draw_start_y, kinetic_obj.draw_end_x, kinetic_obj.draw_end_y, '', '#aaaaaa');          
+            templayer.removeChildren();
+            templayer.draw();
+            drawing = false;
+            drawRectElement(layer, draw_start_x, draw_start_y, draw_end_x, draw_end_y, '', '#aaaaaa');          
             break;      
           }
         }
       }
-    },
-    drawMoveHandler: function(event) {
+    }
+    
+    function drawMoveHandler(event) {
       var x = 0;
       var y = 0;
       
@@ -575,70 +531,70 @@ var RESIZE_BOTTOM_RIGHT = 8;
         x = event.pageX;
         y = event.pageY;          
       } else {
-        var relativecoord = kinetic_obj.getRelativeCoords(event);
+        var relativecoord = getRelativeCoords(event);
         x = relativecoord.x;
         y = relativecoord.y;  
       }
       
-      if (this.resizeEnabled != 0 && this.latestitem != null) {        
-        this.resizeElement(x, y);
+      if (resizeEnabled != 0 && latestitem != null) {        
+        resizeElement(x, y);
       } else {
-        if (this.currentTool === TOOL_MOVE) {
+        if (currentTool === TOOL_MOVE) {
               if (!Modernizr.touch) {
                 var item = null;
-                if (this.latestitem != null && this.latestitem instanceof Kinetic.Text) {
-                  console.log(this.latestitem);
+                if (latestitem != null && latestitem instanceof Kinetic.Text) {
+                  console.log(latestitem);
                 // In case the selection is already displayed, allow user to go outside of the shape for CONST_SELECTION_ITEM_SIZE before hiding the selection  
-                  if (canvas_util.isBetween(x, this.latestitem.getX() - CONST_SELECTION_ITEM_SIZE, this.latestitem.getX() + this.latestitem.getWidth() + CONST_SELECTION_ITEM_SIZE) &&
-                      canvas_util.isBetween(y, this.latestitem.getY() - CONST_SELECTION_ITEM_SIZE, this.latestitem.getY() + this.latestitem.getHeight() + CONST_SELECTION_ITEM_SIZE)
+                  if (canvas_util.isBetween(x, latestitem.getX() - CONST_SELECTION_ITEM_SIZE, latestitem.getX() + latestitem.getWidth() + CONST_SELECTION_ITEM_SIZE) &&
+                      canvas_util.isBetween(y, latestitem.getY() - CONST_SELECTION_ITEM_SIZE, latestitem.getY() + latestitem.getHeight() + CONST_SELECTION_ITEM_SIZE)
                       ) {
-                    item = this.latestitem;
+                    item = latestitem;
                   } else {
                     item = null;
                   }
                 } else {
-                  item = canvas_util.selectShape(this.layer, x, y);                  
+                  item = canvas_util.selectShape(layer, x, y);                  
                 }
               
-                //kinetic_obj.changeDragDrop(false);
-                this.latestitem = item;
+                //changeDragDrop(false);
+                latestitem = item;
                 // if the cursor is currently hovering on top
                 if (item != null && item instanceof Kinetic.Text) {
                   
-                  this.displaySelection(item);
+                  displaySelection(item);
                 } else if (item != null && item instanceof Kinetic.Line) {
-                  this.selectionVisible = true;
-                  this.templayer.removeChildren();
+                  selectionVisible = true;
+                  templayer.removeChildren();
                   var points = item.getPoints();
                   
                   for (var i = 0; i < points.length; i++) {
-                    this.drawSelectionElement(kinetic_obj.templayer, points[i].x - CONST_SELECTION_ITEM_SIZE, points[i].y - CONST_SELECTION_ITEM_SIZE, points[i].x + CONST_SELECTION_ITEM_SIZE, points[i].y + CONST_SELECTION_ITEM_SIZE);                   
+                    drawSelectionElement(templayer, points[i].x - CONST_SELECTION_ITEM_SIZE, points[i].y - CONST_SELECTION_ITEM_SIZE, points[i].x + CONST_SELECTION_ITEM_SIZE, points[i].y + CONST_SELECTION_ITEM_SIZE);                   
                   }
                 } else {
-                  this.selectionVisible = false;
-                  this.templayer.removeChildren();
-                  this.templayer.draw();
+                  selectionVisible = false;
+                  templayer.removeChildren();
+                  templayer.draw();
                 }
               }
               
         }
         
-        if (this.drawing === true) {
+        if (drawing === true) {
           draw_end_x = x;
           draw_end_y = y;
-          this.templayer.removeChildren();
-          this.templayer.draw();
+          templayer.removeChildren();
+          templayer.draw();
           
-          switch (this.currentTool) {
+          switch (currentTool) {
             case TOOL_ARROW:
               {
-                this.drawArrowElement(this.templayer, this.draw_start_x, this.draw_start_y, x, y);
+                drawArrowElement(templayer, draw_start_x, draw_start_y, x, y);
                 break;
               }
             
             case TOOL_RECT:
               {
-                this.drawRectElement(this.templayer, this.draw_start_x, this.draw_start_y, x, y, '', '#aaaaaa');                    
+                drawRectElement(templayer, draw_start_x, draw_start_y, x, y, '', '#aaaaaa');                    
                 break;
               }        
           }
@@ -646,70 +602,74 @@ var RESIZE_BOTTOM_RIGHT = 8;
         }
         
       }      
-    },
-    displaySelection: function(item) {
-        this.selectionVisible = true;
+    }
+    
+    function displaySelection(item) {
+        selectionVisible = true;
         
-        this.templayer.removeChildren();
+        templayer.removeChildren();
         // Top - center
-        this.drawSelectionElement(kinetic_obj.templayer, item.getX() + (item.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + (item.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
+        drawSelectionElement(templayer, item.getX() + (item.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + (item.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
         // Left - center
-        this.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() + (item.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE,item.getY() + (item.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE);
+        drawSelectionElement(templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() + (item.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE,item.getY() + (item.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE);
         // Bottom - center
-        this.drawSelectionElement(kinetic_obj.templayer, item.getX() + (item.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE + item.getHeight(), item.getX() + (item.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE + item.getHeight());
+        drawSelectionElement(templayer, item.getX() + (item.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE + item.getHeight(), item.getX() + (item.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE + item.getHeight());
         // Right - center
-        this.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE + item.getWidth(), item.getY() + (item.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE + item.getWidth(), item.getY() + (item.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE);
+        drawSelectionElement(templayer, item.getX() - CONST_SELECTION_ITEM_SIZE + item.getWidth(), item.getY() + (item.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE + item.getWidth(), item.getY() + (item.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE);
 
-        this.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
-        this.drawSelectionElement(kinetic_obj.templayer, item.getX() + item.getWidth() - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + item.getWidth() + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
-        this.drawSelectionElement(kinetic_obj.templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() + CONST_SELECTION_ITEM_SIZE);
-        this.drawSelectionElement(kinetic_obj.templayer, item.getX() + item.getWidth() - CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() - CONST_SELECTION_ITEM_SIZE, item.getX() + item.getWidth() + CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() + CONST_SELECTION_ITEM_SIZE);
-    },
-    keyDownHandler: function(event) {
-      if (kinetic_obj.text_edit_shape != null) {
+        drawSelectionElement(templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
+        drawSelectionElement(templayer, item.getX() + item.getWidth() - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + item.getWidth() + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
+        drawSelectionElement(templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() + CONST_SELECTION_ITEM_SIZE);
+        drawSelectionElement(templayer, item.getX() + item.getWidth() - CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() - CONST_SELECTION_ITEM_SIZE, item.getX() + item.getWidth() + CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() + CONST_SELECTION_ITEM_SIZE);
+    }
+    
+    function keyDownHandler(event) {
+      if (text_edit_shape != null) {
         switch (event.keyCode) {
           
           case 13: // enter
             {
-              kinetic_obj.text_edit_shape.setText(kinetic_obj.text_edit_string);
-              kinetic_obj.text_edit_shape.setFill('#aaaaaa');
-              kinetic_obj.layer.draw();
-              clearInterval(kinetic_obj.cursorTimerID); 
-              kinetic_obj.text_edit_shape = null;                
+              text_edit_shape.setText(text_edit_string);
+              text_edit_shape.setFill('#aaaaaa');
+              layer.draw();
+              clearInterval(cursorTimerID); 
+              text_edit_shape = null;                
               break;
             }
             
           case 8: // backspace
             {
-              var currentString = kinetic_obj.text_edit_string;
+              var currentString = text_edit_string;
               if (currentString.length > 1) {
                 var newString = currentString.substr(0, currentString.length - 1);
-                kinetic_obj.text_edit_string = newString;
+                text_edit_string = newString;
               } else {
-                kinetic_obj.text_edit_string = '';
+                text_edit_string = '';
               }
-              kinetic_obj.text_edit_shape.setText(text_edit_string);
-              kinetic_obj.layer.draw();                                 
+              text_edit_shape.setText(text_edit_string);
+              layer.draw();                                 
               break;
             }
     
         default:
           {
-            var currentString = kinetic_obj.text_edit_string;              
+            var currentString = text_edit_string;              
             var character = String.fromCharCode(event.keyCode);
             var newString = currentString.concat(character);
-            kinetic_obj.text_edit_string = newString.toLowerCase();
-            kinetic_obj.text_edit_shape.setText(kinetic_obj.text_edit_string);
-            kinetic_obj.layer.draw();
+            text_edit_string = newString.toLowerCase();
+            text_edit_shape.setText(text_edit_string);
+            layer.draw();
             break;
           }
         }
       }
-    },
-    savefilecallback: function(error, stat) {
+    }
+    
+    function savefilecallback(error, stat) {
       
-    },
-    SaveFile: function(kineticLayer) {
+    }
+    
+    function SaveFile(kineticLayer) {
       
       var writeToFile = '';
       var shapes = kineticLayer.getChildren();
@@ -720,12 +680,13 @@ var RESIZE_BOTTOM_RIGHT = 8;
       if (writeToFile != '') {
         //require(['dropbox_handler'], function(dropbox_handler) {
             dropbox_handler.authenticate();
-            dropbox_handler.savecontents(fileNameBar.getFileName(), writeToFile, kinetic_obj.savefilecallback);
+            dropbox_handler.savecontents(fileNameBar.getFileName(), writeToFile, savefilecallback);
         //});    
       }
 
-    },
-    LoadFile: function(error, data) {
+    }
+    
+    function LoadFile(error, data) {
       $(data).find('shape').each(function () {
         switch ($(this).attr('type')) {
           case TOOL_RECT:
@@ -740,7 +701,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
               if ($(this).text() != '') {
                 text = $(this).text();
               }
-              kinetic_obj.drawRectElement(kinetic_obj.layer, x, y, x + width, y + height, text, fill);
+              drawRectElement(layer, x, y, x + width, y + height, text, fill);
               break;
             }
           
@@ -752,19 +713,18 @@ var RESIZE_BOTTOM_RIGHT = 8;
                 points.push(parseInt($(this).attr('x')));
                 points.push(parseInt($(this).attr('y')));
               });
-              kinetic_obj.drawLineElement(kinetic_obj.layer, points);
+              drawLineElement(layer, points);
               break;
             }
         }
       });
-      wait_dialog.WaitDialog(false);
-      kinetic_obj.latestitem = null;
+      canvasWaitDialog.hideWaitDialog();
+      latestitem = null;
 
     }
-  };
   
   function init() {
-    kinetic_obj.stage = new Kinetic.Stage({
+    stage = new Kinetic.Stage({
       container: "container",
       x: 0,
       y: 0,
@@ -772,20 +732,23 @@ var RESIZE_BOTTOM_RIGHT = 8;
       height: 600
     });
     // add the layer to the stage
-    kinetic_obj.stage.add(kinetic_obj.layer);
-    kinetic_obj.stage.add(kinetic_obj.templayer);
-    kinetic_obj.stage.add(kinetic_obj.popupMenu_layer);
+    stage.add(layer);
+    stage.add(templayer);
+    stage.add(popupMenu_layer);
+    
+    canvasWaitDialog.showWaitDialog(templayer);
+    
     var el = document.getElementById('container');
     if (Modernizr.touch) {
-      el.addEventListener('touchstart', function(event) { kinetic_obj.drawDownHandler(event); });    
-      el.addEventListener('touchend', function(event) { kinetic_obj.drawEndHandler(event); });    
-      el.addEventListener('touchmove', function(event) { kinetic_obj.drawMoveHandler(event); });    
+      el.addEventListener('touchstart', function(event) { drawDownHandler(event); });    
+      el.addEventListener('touchend', function(event) { drawEndHandler(event); });    
+      el.addEventListener('touchmove', function(event) { drawMoveHandler(event); });    
     } else {
-      el.addEventListener('mousedown', function(event) { kinetic_obj.drawDownHandler(event); });    
-      el.addEventListener('mouseup', function(event) { kinetic_obj.drawEndHandler(event); });    
-      el.addEventListener('mousemove', function(event) { kinetic_obj.drawMoveHandler(event); });    
+      el.addEventListener('mousedown', function(event) { drawDownHandler(event); });    
+      el.addEventListener('mouseup', function(event) { drawEndHandler(event); });    
+      el.addEventListener('mousemove', function(event) { drawMoveHandler(event); });    
     }
-    document.addEventListener('keydown', function(event) { kinetic_obj.keyDownHandler(event); });
+    document.addEventListener('keydown', function(event) { keyDownHandler(event); });
     
     $('#radio9').ColorPicker({
      color: '#0000ff',
@@ -798,9 +761,9 @@ var RESIZE_BOTTOM_RIGHT = 8;
              return false;
      },
      onChange: function(hsb, hex, rgb) {
-       if (kinetic_obj.itemSelected != null) {
-         kinetic_obj.itemSelected.setFill(hex);
-         kinetic_obj.layer.draw();
+       if (itemSelected != null) {
+         itemSelected.setFill(hex);
+         layer.draw();
        }
      }
      });
@@ -809,30 +772,30 @@ var RESIZE_BOTTOM_RIGHT = 8;
   }
   
   function SetCurrentFileName(filename) {
-    kinetic_obj.CurrentFileName = filename;  
+    CurrentFileName = filename;  
   }
   
   function ToolBoxCallback(item) {
-    kinetic_obj.currentTool = item;
+    currentTool = item;
     
     switch (item) {
       case TOOL_SAVE: {
-          kinetic_obj.SaveFile(kinetic_obj.layer);
+          SaveFile(layer);
         break;
       }
       case TOOL_MOVE:
       {
-        kinetic_obj.changeDragDrop(true);        
+        changeDragDrop(true);        
         break;
       }
       case TOOL_COLOR:
       {
-        console.log(kinetic_obj.itemSelected);
+        console.log(itemSelected);
        break;
       }
     default:
       {
-        kinetic_obj.changeDragDrop(false);
+        changeDragDrop(false);
         break;
       }
     }
@@ -842,14 +805,13 @@ var RESIZE_BOTTOM_RIGHT = 8;
   
   return {
     init: init,
-    stage: kinetic_obj.stage,
-    layer: kinetic_obj.layer,
-    templayer: kinetic_obj.templayer,
-    popupMenu_layer: kinetic_obj.popupMenu_layer,
-    currenttool: kinetic_obj.currentTool,
+    stage: stage,
+    layer: layer,
+    templayer: templayer,
+    popupMenu_layer: popupMenu_layer,
+    currenttool: currentTool,
     toolboxcallback: ToolBoxCallback,
-    loadfilecallback: kinetic_obj.LoadFile,
-    waitdialog: wait_dialog.WaitDialog,
+    loadfilecallback: LoadFile,
     setcurrentfilename: SetCurrentFileName
   }
 });
