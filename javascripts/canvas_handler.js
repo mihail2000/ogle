@@ -1,44 +1,44 @@
-define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWaitDialog', 'javascripts/lib/kineticjs-4.0.1.js', 'javascripts/lib/modernizr.custom.90822.js', 'javascripts/lib/colorpicker/colorpicker.js', 'shapeToXML'], function(dropbox_handler, canvas_util, popupMenu, fileNameBar, canvasWaitDialog) {
+define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWaitDialog', 'rectController', 'javascripts/lib/kineticjs-4.0.1.js', 'javascripts/lib/modernizr.custom.90822.js', 'javascripts/lib/colorpicker/colorpicker.js', 'shapeToXML'], function(dropbox_handler, canvas_util, popupMenu, fileNameBar, canvasWaitDialog, rectController) {
 
-var TOOL_SELECT = 'select';
-var TOOL_MOVE = 'move';
-var TOOL_RECT = 'rect';
-var TOOL_ARROW = 'arrow';
-var TOOL_TEXT = 'settext';
-var TOOL_ADDCHILD = 'addchild';
-var TOOL_DELETE = 'delete';
-var TOOL_LOAD = 'load';
-var TOOL_SAVE = 'save';
-var TOOL_COLOR = 'color';
-var CONST_SELECTION_ITEM_SIZE = 6;
-
-var RESIZE_TOP_LEFT = 1;
-var RESIZE_TOP_CENTER = 2;
-var RESIZE_TOP_RIGHT = 3;
-var RESIZE_LEFT_CENTER = 4;
-var RESIZE_RIGHT_CENTER = 5;
-var RESIZE_BOTTOM_LEFT = 6;
-var RESIZE_BOTTOM_CENTER = 7;
-var RESIZE_BOTTOM_RIGHT = 8;
-
-    var stage = null;
-    var layer = new Kinetic.Layer();
-    var templayer = new Kinetic.Layer();
-    var popupMenu_layer = new Kinetic.Layer();
-    var currentTool = '';
-    var drawing = false;
-    var latestitem = null;
-    var draw_start_x = 0;
-    var draw_start_y = 0;
-    var draw_end_x = 0;
-    var draw_end_y = 0;
-    var CurrentFileName = '';
-    var text_edit_shape = null;
-    var text_edit_string = '';
-    var cursorVisible = false;
-    var selectionVisible = false;
-    var itemSelected = null;
-    var resizeEnabled = 0;
+  var TOOL_SELECT = 'select';
+  var TOOL_MOVE = 'move';
+  var TOOL_RECT = 'rect';
+  var TOOL_ARROW = 'arrow';
+  var TOOL_TEXT = 'settext';
+  var TOOL_ADDCHILD = 'addchild';
+  var TOOL_DELETE = 'delete';
+  var TOOL_LOAD = 'load';
+  var TOOL_SAVE = 'save';
+  var TOOL_COLOR = 'color';
+  var CONST_SELECTION_ITEM_SIZE = 6;
+  
+  var RESIZE_TOP_LEFT = 1;
+  var RESIZE_TOP_CENTER = 2;
+  var RESIZE_TOP_RIGHT = 3;
+  var RESIZE_LEFT_CENTER = 4;
+  var RESIZE_RIGHT_CENTER = 5;
+  var RESIZE_BOTTOM_LEFT = 6;
+  var RESIZE_BOTTOM_CENTER = 7;
+  var RESIZE_BOTTOM_RIGHT = 8;
+  
+  var stage = null;
+  var layer = new Kinetic.Layer();
+  var templayer = new Kinetic.Layer();
+  var popupMenu_layer = new Kinetic.Layer();
+  var currentTool = '';
+  var drawing = false;
+  var latestitem = null;
+  var draw_start_x = 0;
+  var draw_start_y = 0;
+  var draw_end_x = 0;
+  var draw_end_y = 0;
+  var CurrentFileName = '';
+  var text_edit_shape = null;
+  var text_edit_string = '';
+  var cursorVisible = false;
+  var selectionVisible = false;
+  var itemSelected = null;
+  var resizeEnabled = 0;
     
     function showCursor()  {
       if (cursorVisible) {
@@ -86,46 +86,6 @@ var RESIZE_BOTTOM_RIGHT = 8;
       }
     }
     
-    function drawSelectionElement(drawtolayer, startx, starty, endx, endy, text) {
-      var rectx = 0;
-      var recty = 0;
-              
-      var rectheight = 0;
-      var rectwidth = 0;
-              
-      if (startx < endx) {
-        rectx = startx;
-        rectwidth = endx - startx;
-      } else {
-        rectx = endx;
-        rectwidth = startx - endx;
-      }
-      
-      if (starty < endy) {
-        recty = starty;
-        rectheight = endy - starty;
-      } else {
-        recty = endy;
-        rectheight = starty - endy;
-      }
-      
-      var rect = new Kinetic.Rect({
-        x: rectx,
-        y: recty,
-        width: rectwidth,
-        height: rectheight,
-        fill: '#ffffff',
-        stroke: 'black',
-        textFill: '#555',
-        strokeWidth: 1,
-        cornerRadius: 0,
-        padding: 0,
-      });
-      
-      drawtolayer.add(rect);
-      drawtolayer.draw();  
-    }
-    
     function drawArrowElement(drawtolayer, x1, y1, x2, y2) {
       var points = [];
       points.push(x1);
@@ -149,70 +109,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
       drawtolayer.add(arrow);
       drawtolayer.draw();
     }
-    
-    function drawRectElement(drawtolayer, startx, starty, endx, endy, text, fill) {
-      var rectx = 0;
-      var recty = 0;
-      var rectheight = 0;
-      var rectwidth = 0;
-              
-      if (startx < endx) {
-        rectx = startx;
-        rectwidth = endx - startx;
-      } else {
-        rectx = endx;
-        rectwidth = startx - endx;
-      }
       
-      if (starty < endy) {
-        recty = starty;
-        rectheight = endy - starty;
-      } else {
-        recty = endy;
-        rectheight = starty - endy;
-      }
-      
-      if (rectheight < 50) {
-        rectheight = 50;              
-      }
-    
-      if (rectwidth < 50) {
-        rectwidth = 50;              
-      }
-            
-      var rect = new Kinetic.Text({
-        x: rectx,
-        y: recty,
-        width: rectwidth,
-        height: rectheight,
-        fill: fill,
-        stroke: 'black',
-        fontSize: 14,
-        fontFamily: 'Calibri',
-        textFill: '#555',
-        strokeWidth: 1,
-        cornerRadius: 10,
-        padding: 20,
-        align: 'center',
-        shadow: {
-          color: 'black',
-          blur: 1,
-          offset: [10, 10],
-          opacity: 0.2
-        }
-      });
-      
-      if (text != '') {
-        rect.setText(text);
-      }
-      latestitem = rect;
-    
-      // add the shape to the layer
-      drawtolayer.add(rect);
-      drawtolayer.draw();
-    
-    }
-    
     function resizeElement(x, y) {
         var newheight = 0;
         var newwidth = 0;
@@ -322,10 +219,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
       } else if (latestitem instanceof Kinetic.Line) {
         
       }
-
-        
         layer.draw();
-      
     }
     
     function drawDownHandler(event) {
@@ -375,12 +269,11 @@ var RESIZE_BOTTOM_RIGHT = 8;
           }
         case TOOL_MOVE:
           {
-            if (selectionVisible) {
+            console.log('selectionVisible ' + selectionVisible);
+            if (rectController.selection.selectionVisible) {
               var item = canvas_util.selectShape(templayer, x, y);
               if (item != null && latestitem != null && latestitem instanceof Kinetic.Text) {
-                selectionVisible = false;
-                templayer.removeChildren();
-                templayer.draw();
+                rectController.selection.hideRectSelection();
                 console.log('resize enabled');
                 // Decide how to do resizing, i.e. from which spot user started the resize
                 //var Y_Spot =;
@@ -516,7 +409,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
             templayer.removeChildren();
             templayer.draw();
             drawing = false;
-            drawRectElement(layer, draw_start_x, draw_start_y, draw_end_x, draw_end_y, '', '#aaaaaa');          
+            latestItem = rectController.drawRectElement(layer, draw_start_x, draw_start_y, draw_end_x, draw_end_y, '', '#aaaaaa');          
             break;      
           }
         }
@@ -536,92 +429,32 @@ var RESIZE_BOTTOM_RIGHT = 8;
         y = relativecoord.y;  
       }
       
-      if (resizeEnabled != 0 && latestitem != null) {        
-        resizeElement(x, y);
-      } else {
-        if (currentTool === TOOL_MOVE) {
-              if (!Modernizr.touch) {
-                var item = null;
-                if (latestitem != null && latestitem instanceof Kinetic.Text) {
-                  console.log(latestitem);
-                // In case the selection is already displayed, allow user to go outside of the shape for CONST_SELECTION_ITEM_SIZE before hiding the selection  
-                  if (canvas_util.isBetween(x, latestitem.getX() - CONST_SELECTION_ITEM_SIZE, latestitem.getX() + latestitem.getWidth() + CONST_SELECTION_ITEM_SIZE) &&
-                      canvas_util.isBetween(y, latestitem.getY() - CONST_SELECTION_ITEM_SIZE, latestitem.getY() + latestitem.getHeight() + CONST_SELECTION_ITEM_SIZE)
-                      ) {
-                    item = latestitem;
-                  } else {
-                    item = null;
-                  }
-                } else {
-                  item = canvas_util.selectShape(layer, x, y);                  
-                }
-              
-                //changeDragDrop(false);
-                latestitem = item;
-                // if the cursor is currently hovering on top
-                if (item != null && item instanceof Kinetic.Text) {
-                  
-                  displaySelection(item);
-                } else if (item != null && item instanceof Kinetic.Line) {
-                  selectionVisible = true;
-                  templayer.removeChildren();
-                  var points = item.getPoints();
-                  
-                  for (var i = 0; i < points.length; i++) {
-                    drawSelectionElement(templayer, points[i].x - CONST_SELECTION_ITEM_SIZE, points[i].y - CONST_SELECTION_ITEM_SIZE, points[i].x + CONST_SELECTION_ITEM_SIZE, points[i].y + CONST_SELECTION_ITEM_SIZE);                   
-                  }
-                } else {
-                  selectionVisible = false;
-                  templayer.removeChildren();
-                  templayer.draw();
-                }
-              }
-              
-        }
+      if (currentTool === TOOL_MOVE) {
+        rectController.selection.handleSelection(layer, templayer, x, y);        
+      }
         
-        if (drawing === true) {
-          draw_end_x = x;
-          draw_end_y = y;
-          templayer.removeChildren();
-          templayer.draw();
-          
-          switch (currentTool) {
-            case TOOL_ARROW:
-              {
-                drawArrowElement(templayer, draw_start_x, draw_start_y, x, y);
-                break;
-              }
-            
-            case TOOL_RECT:
-              {
-                drawRectElement(templayer, draw_start_x, draw_start_y, x, y, '', '#aaaaaa');                    
-                break;
-              }        
-          }
-          
-        }
-        
-      }      
-    }
-    
-    function displaySelection(item) {
-        selectionVisible = true;
-        
+      if (drawing === true) {
+        draw_end_x = x;
+        draw_end_y = y;
         templayer.removeChildren();
-        // Top - center
-        drawSelectionElement(templayer, item.getX() + (item.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + (item.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
-        // Left - center
-        drawSelectionElement(templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() + (item.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE,item.getY() + (item.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE);
-        // Bottom - center
-        drawSelectionElement(templayer, item.getX() + (item.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE + item.getHeight(), item.getX() + (item.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE + item.getHeight());
-        // Right - center
-        drawSelectionElement(templayer, item.getX() - CONST_SELECTION_ITEM_SIZE + item.getWidth(), item.getY() + (item.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE + item.getWidth(), item.getY() + (item.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE);
-
-        drawSelectionElement(templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
-        drawSelectionElement(templayer, item.getX() + item.getWidth() - CONST_SELECTION_ITEM_SIZE, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getX() + item.getWidth() + CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE);
-        drawSelectionElement(templayer, item.getX() - CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() - CONST_SELECTION_ITEM_SIZE, item.getX() + CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() + CONST_SELECTION_ITEM_SIZE);
-        drawSelectionElement(templayer, item.getX() + item.getWidth() - CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() - CONST_SELECTION_ITEM_SIZE, item.getX() + item.getWidth() + CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() + CONST_SELECTION_ITEM_SIZE);
+        templayer.draw();
+        
+        switch (currentTool) {
+          case TOOL_ARROW:
+            {
+              drawArrowElement(templayer, draw_start_x, draw_start_y, x, y);
+              break;
+            }
+          
+          case TOOL_RECT:
+            {
+              latestItem = rectController.drawRectElement(templayer, draw_start_x, draw_start_y, x, y, '', '#aaaaaa');                    
+              break;
+            }        
+        } 
+      }     
     }
+  
     
     function keyDownHandler(event) {
       if (text_edit_shape != null) {
@@ -666,7 +499,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
     }
     
     function savefilecallback(error, stat) {
-      
+     
     }
     
     function SaveFile(kineticLayer) {
@@ -701,7 +534,7 @@ var RESIZE_BOTTOM_RIGHT = 8;
               if ($(this).text() != '') {
                 text = $(this).text();
               }
-              drawRectElement(layer, x, y, x + width, y + height, text, fill);
+              latestItem = rectController.drawRectElement(layer, x, y, x + width, y + height, text, fill);
               break;
             }
           
@@ -767,8 +600,6 @@ var RESIZE_BOTTOM_RIGHT = 8;
        }
      }
      });
-
-    
   }
   
   function SetCurrentFileName(filename) {
