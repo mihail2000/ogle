@@ -243,11 +243,12 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
       switch (currentTool) {
         case TOOL_SELECT:
           {
-            var item = canvas_util.selectShape(layer, x, y);
-            if (item != null) {
-              itemSelected = item;
-              displaySelection(item);  
-            }
+            //var item = canvas_util.selectShape(layer, x, y);
+            //if (item != null) {
+             // itemSelected = item;
+              itemSelected = rectController.selection.handleSelection(layer, templayer, x, y);    
+             // displaySelection(item);  
+            //}
             
 
            /* 
@@ -595,6 +596,7 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
      },
      onChange: function(hsb, hex, rgb) {
        if (itemSelected != null) {
+         console.log('itemselected');
          itemSelected.setFill(hex);
          layer.draw();
        }

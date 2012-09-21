@@ -7,7 +7,7 @@ define (['canvasUtil'], function(canvasUtil) {
 
     function handleSelection(layer, templayer, x, y) {
       if (resizeEnabled != 0 && selectedObject != null) {
-        resizeBy
+        
       } else {
         if (!Modernizr.touch) { // This type of selection only allowed for non-touch environments
           var item = null;
@@ -43,8 +43,10 @@ define (['canvasUtil'], function(canvasUtil) {
             templayer.draw();
           }
         }
+        return selectedObject;
       }
     }
+    
     function drawSelectionElement(drawtolayer, startx, starty, endx, endy, text) {
       var rectx = 0;
       var recty = 0;
