@@ -1,4 +1,4 @@
-define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWaitDialog', 'rectController', 'javascripts/lib/kineticjs-4.0.1.js', 'javascripts/lib/modernizr.custom.90822.js', 'javascripts/lib/colorpicker/colorpicker.js', 'shapeToXML'], function(dropbox_handler, canvas_util, popupMenu, fileNameBar, canvasWaitDialog, rectController) {
+define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWaitDialog', 'rectController', 'selectionController', 'arrowController', 'javascripts/lib/kineticjs-4.0.1.js', 'javascripts/lib/modernizr.custom.90822.js', 'javascripts/lib/colorpicker/colorpicker.js', 'shapeToXML'], function(dropbox_handler, canvas_util, popupMenu, fileNameBar, canvasWaitDialog, rectController, selectionController, arrowController) {
 
   var TOOL_SELECT = 'select';
   var TOOL_MOVE = 'move';
@@ -37,202 +37,94 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
   var cursorVisible = false;
   var itemSelected = null;
   var resizeEnabled = 0;
-    
-    function showCursor()  {
-      if (cursorVisible) {
-        text_edit_shape.setText(text_edit_string);
-        cursorVisible = false;
-      } else {
-        var newtext = text_edit_string + '|';
-        text_edit_shape.setText(newtext);
-        cursorVisible = true;
-      }
-      layer.draw(); 
-    }
-    
-    // Select the shape user clicked / touched
-    function changeText(shape) {
-      if (text_edit_shape == null) {
-          text_edit_shape = shape;
-          text_edit_string = '';
-    
-          text_edit_string = text_edit_shape.getText();
-    
-          // In non-touch environments, text is edited directly to the shape
-          if (!Modernizr.touch) {
-            cursorTimerID = setInterval(function(){showCursor()}, 500);                                
-            text_edit_shape.setFill('#ffffff');
-          // In touch environments, display text input box (TODO: figure out if there is more elegant way)
-          } else {
-            var newText = prompt('Enter new text', text_edit_shape.getText());
-            text_edit_shape.setText(newText);
-            text_edit_shape = null;
-          }
-      }
-    }
-    
-    function getRelativeCoords(event) {
-      if (event.offsetX !== undefined && event.offsetY !== undefined) { return { x: event.offsetX, y: event.offsetY }; }
-      return { x: event.layerX, y: event.layerY };
-    }
-    
-    function changeDragDrop(changeval) {
-      var shapes = layer.getChildren();
-      for (var i = 0; i < shapes.length; i++)
-      {
-        shapes[i].setDraggable(changeval);
-      }
-    }
-    
-    function drawArrowElement(drawtolayer, x1, y1, x2, y2) {
-      var points = [];
-      points.push(x1);
-      points.push(y1);
-      points.push(x2);
-      points.push(y2);
-      drawLineElement(drawtolayer, points);  
-    }
-    
-    function drawLineElement(drawtolayer, points) {
-      var x = 0;
-      var y = 0;
-      var arrow = new Kinetic.Line({
-        points: points,
-        stroke: "black",
-        strokeWidth: 2
-        });
-    
-      latestitem = arrow;
-      // add the shape to the layer
-      drawtolayer.add(arrow);
-      drawtolayer.draw();
-    }
-      
-    function resizeElement(x, y) {
-        var newheight = 0;
-        var newwidth = 0;
-        var newX = 0;
-        var newY = 0;
-        
-        if (latestitem instanceof Kinetic.Text) {
-          switch (resizeEnabled) {
-            case RESIZE_TOP_LEFT:
-            case RESIZE_TOP_RIGHT:
-            case RESIZE_TOP_CENTER: {
-               if (y > latestitem.getY()) {
-                newheight = latestitem.getHeight() - (y - latestitem.getY());
-              } else {
-                newheight = latestitem.getHeight() + (latestitem.getY() - y);                
-              }
-              break;
-            }
-           case RESIZE_BOTTOM_LEFT:
-           case RESIZE_BOTTOM_RIGHT:
-            case RESIZE_BOTTOM_CENTER: {
-              if (y > (latestitem.getY() + latestitem.getHeight()) ) {
-                newheight = latestitem.getHeight() + (y - (latestitem.getY() + latestitem.getHeight()));
-              } else {
-                newheight = latestitem.getHeight() - ((latestitem.getY() + latestitem.getHeight()) - y);
-              }
-              break;
-            }
-          }
-          
-          switch (resizeEnabled) {
-            case RESIZE_TOP_LEFT:
-            case RESIZE_BOTTOM_LEFT:
-            case RESIZE_LEFT_CENTER: {
-               if (x > latestitem.getX()) {
-                newwidth = latestitem.getWidth() - (x - latestitem.getX());
-              } else {
-                newwidth = latestitem.getWidth() + (latestitem.getX() - x);                
-              }
-              break;
-            }
-          case RESIZE_TOP_RIGHT: 
-          case RESIZE_BOTTOM_RIGHT:
-          case RESIZE_RIGHT_CENTER: {
-            if (x > (latestitem.getX() + latestitem.getWidth() )) {
-              newwidth = latestitem.getWidth() + (x -(latestitem.getX() + latestitem.getWidth()));
-            } else {
-              newwidth = latestitem.getWidth() + (x -(latestitem.getX() + latestitem.getWidth()));                
-            }
-            break;  
-            }
-            
-          }
   
-          switch (resizeEnabled) {
-            case RESIZE_TOP_LEFT:{
-              newX = x;
-              newY = y;
-              break;
-            }
-           case RESIZE_BOTTOM_LEFT: {
-            newY = latestitem.getY();
-            newX = x;
-            break;
-           }
-           case RESIZE_TOP_RIGHT: {
-            newY = y;
-            newX = latestitem.getX();
-  
-            break;
-           }
-            case RESIZE_BOTTOM_RIGHT: {
-            newY = latestitem.getY();
-            newX = latestitem.getX();
-            break;
-            }
-            case RESIZE_TOP_CENTER: {
-             newX = latestitem.getX();
-             newwidth = latestitem.getWidth();
-             newY = y;
-             break; 
-            }
-            case RESIZE_BOTTOM_CENTER: {
-             newX = latestitem.getX();
-             newwidth = latestitem.getWidth();
-             newY = latestitem.getY();
-             break; 
-            }
-            case RESIZE_LEFT_CENTER: {
-             newY = latestitem.getY();
-             newheight = latestitem.getHeight();
-             newX = x;
-             break; 
-            }
-            case RESIZE_RIGHT_CENTER: {
-             newY = latestitem.getY();
-             newheight = latestitem.getHeight();
-             newX = latestitem.getX();           
-             break; 
-            }
-          }
-  
-          latestitem.setWidth(newwidth);
-          latestitem.setHeight(newheight);
-          latestitem.setX(newX);
-          latestitem.setY(newY);        
-      } else if (latestitem instanceof Kinetic.Line) {
-        
-      }
-        layer.draw();
-    }
+  var controllers = []; // Array of controllers handling mouse, touch and keyboard events
     
-    function drawDownHandler(event) {
-      var x = 0;
-      var y = 0;
+  function showCursor()  {
+    if (cursorVisible) {
+      text_edit_shape.setText(text_edit_string);
+      cursorVisible = false;
+    } else {
+      var newtext = text_edit_string + '|';
+      text_edit_shape.setText(newtext);
+      cursorVisible = true;
+    }
+    layer.draw(); 
+  }
+    
+  // Select the shape user clicked / touched
+  function changeText(shape) {
+    if (text_edit_shape == null) {
+        text_edit_shape = shape;
+        text_edit_string = '';
+  
+        text_edit_string = text_edit_shape.getText();
+  
+        // In non-touch environments, text is edited directly to the shape
+        if (!Modernizr.touch) {
+          cursorTimerID = setInterval(function(){showCursor()}, 500);                                
+          text_edit_shape.setFill('#ffffff');
+        // In touch environments, display text input box (TODO: figure out if there is more elegant way)
+        } else {
+          var newText = prompt('Enter new text', text_edit_shape.getText());
+          text_edit_shape.setText(newText);
+          text_edit_shape = null;
+        }
+    }
+  }
+    
+  function getRelativeCoords(event) {
+    if (event.offsetX !== undefined && event.offsetY !== undefined) { return { x: event.offsetX, y: event.offsetY }; }
+    return { x: event.layerX, y: event.layerY };
+  }
+    
+  function changeDragDrop(changeval) {
+    var shapes = layer.getChildren();
+    for (var i = 0; i < shapes.length; i++)
+    {
+      shapes[i].setDraggable(changeval);
+    }
+  }
+    /*
+     * getControllerById
+     *
+     * Retrieves a canvas controller class based on the given id.
+     * Id represents the currently selected tool (drawing, selection, moving etc.)
+     *
+     * Parameters:
+     *  id - id of the controller to be retrieved
+     *
+     * Returns:
+     *  Controller object with the given id
+     */
+    function getControllerById(id) {
+      var controller = null;
+      for (var i = 0; i < controllers.length; i++) {
+        controller = controllers[i];
+        if (controller.getId() === id) {
+          return i;
+        }
+      }
+      return null; // Should never occur if used as should.
+    }
 
-      if (Modernizr.touch) {
-        x = event.pageX;
-        y = event.pageY;
-      } else {
-        var relativecoord = getRelativeCoords(event);
-        x = relativecoord.x;
-        y = relativecoord.y;
-      }
-      
+  function drawDownHandler(event) {
+    var x = 0;
+    var y = 0;
+
+    if (Modernizr.touch) {
+      x = event.pageX;
+      y = event.pageY;
+    } else {
+      var relativecoord = getRelativeCoords(event);
+      x = relativecoord.x;
+      y = relativecoord.y;
+    }
+
+    var controller = controllers[getControllerById(currentTool)];
+    if (controller != null) {
+      controller.startEvent(layer, templayer, x, y);
+    } else {        
       popupMenu.selectionListener(x, y);
       
       console.log('currenttool ' + currentTool);
@@ -268,21 +160,9 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
           }
         case TOOL_MOVE:
           {
-            console.log('selectionVisible ' + rectController.selection.getSelectionVisible());
-            if (rectController.selection.getSelectionVisible()) {
-              resizeEnabled = rectController.selection.getSelectionPoint(templayer, x, y);
-            
-              var item = canvas_util.selectShape(templayer, x, y);
-              if (item != null && latestitem != null && latestitem instanceof Kinetic.Text) {
-                rectController.selection.hideRectSelection();
-                console.log('resize enabled');
-                console.log('resize corner: ' + resizeEnabled);
-              }
-            }
             break;
           }
         case TOOL_ARROW:
-        case TOOL_RECT:
           {
             //popupMenu.hidePopup(popupMenu_layer);
             drawing = true;
@@ -318,77 +198,54 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
         }
       }
     }
+  }
     
-    function drawEndHandler(event) {
-      resizeEnabled = 0;
-      if (drawing) {
-        if (!Modernizr.touch) {
-          var relativecoord = getRelativeCoords(event);
-          draw_end_x = relativecoord.x;
-          draw_end_y = relativecoord.y;  
-        } 
-    
-        switch (currentTool) {
-          case TOOL_ARROW:
-          {
-            templayer.removeChildren();
-            templayer.draw();
-            drawing = false;
-            drawArrowElement(layer, draw_start_x, draw_start_y, draw_end_x, draw_end_y);
-            break;    
-          }
-          case TOOL_RECT:
-          {
-            templayer.removeChildren();
-            templayer.draw();
-            drawing = false;
-            latestItem = rectController.drawRectElement(layer, draw_start_x, draw_start_y, draw_end_x, draw_end_y, '', '#aaaaaa');          
-            break;      
-          }
-        }
-      }
+  function drawEndHandler(event) {
+    var x = 0;
+    var y = 0;
+
+    if (Modernizr.touch) {
+      x = event.pageX;
+      y = event.pageY;
+    } else {
+      var relativecoord = getRelativeCoords(event);
+      x = relativecoord.x;
+      y = relativecoord.y;
     }
-    
-    function drawMoveHandler(event) {
-      var x = 0;
-      var y = 0;
-      
-      if (Modernizr.touch) {
-        x = event.pageX;
-        y = event.pageY;          
-      } else {
+
+    /*if (drawing) {
+      if (!Modernizr.touch) {
         var relativecoord = getRelativeCoords(event);
-        x = relativecoord.x;
-        y = relativecoord.y;  
+        draw_end_x = relativecoord.x;
+        draw_end_y = relativecoord.y;  
       }
       
-      if (currentTool === TOOL_MOVE) {
-        rectController.selection.handleSelection(layer, templayer, x, y);
-        console.log('move ' + rectController.selection.getSelectionVisible());
-      }
-        
-      if (drawing === true) {
-        draw_end_x = x;
-        draw_end_y = y;
-        templayer.removeChildren();
-        templayer.draw();
-        
-        switch (currentTool) {
-          case TOOL_ARROW:
-            {
-              drawArrowElement(templayer, draw_start_x, draw_start_y, x, y);
-              break;
-            }
-          
-          case TOOL_RECT:
-            {
-              latestItem = rectController.drawRectElement(templayer, draw_start_x, draw_start_y, x, y, '', '#aaaaaa');                    
-              break;
-            }        
-        } 
-      }     
     }
-  
+*/
+    var controller = controllers[getControllerById(currentTool)];
+    if (controller != null) {
+      controller.endEvent(layer, templayer, x, y);
+    } 
+  }
+        
+  function drawMoveHandler(event) {
+    var x = 0;
+    var y = 0;
+    
+    if (Modernizr.touch) {
+      x = event.pageX;
+      y = event.pageY;          
+    } else {
+      var relativecoord = getRelativeCoords(event);
+      x = relativecoord.x;
+      y = relativecoord.y;  
+    }
+    
+    var controller = controllers[getControllerById(currentTool)];
+    if (controller != null) {
+      controller.moveEvent(layer, templayer, x, y);
+    }
+  }
     
     function keyDownHandler(event) {
       if (text_edit_shape != null) {
@@ -480,7 +337,7 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
                 points.push(parseInt($(this).attr('x')));
                 points.push(parseInt($(this).attr('y')));
               });
-              drawLineElement(layer, points);
+              arrowController.drawLineElement(layer, points);
               break;
             }
         }
@@ -505,9 +362,15 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
     
     canvasWaitDialog.showWaitDialog(templayer);
     
+    // TODO: Implement LoadControllers in a separate javascript file. Ideally this would be something that can be changed without touching this particular class.
+    controllers.push(selectionController);
+    controllers.push(rectController);
+    controllers.push(arrowController);
+    
+    
     var el = document.getElementById('container');
     if (Modernizr.touch) {
-      el.addEventListener('touchstart', function(event) { drawDownHandler(event); });    
+      el.addEventListener('touchstart', function(event) { drawHandler(event); });    
       el.addEventListener('touchend', function(event) { drawEndHandler(event); });    
       el.addEventListener('touchmove', function(event) { drawMoveHandler(event); });    
     } else {
