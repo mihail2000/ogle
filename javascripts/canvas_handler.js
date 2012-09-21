@@ -32,11 +32,9 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
   var draw_start_y = 0;
   var draw_end_x = 0;
   var draw_end_y = 0;
-  var CurrentFileName = '';
   var text_edit_shape = null;
   var text_edit_string = '';
   var cursorVisible = false;
-  var selectionVisible = false;
   var itemSelected = null;
   var resizeEnabled = 0;
     
@@ -270,80 +268,14 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
           }
         case TOOL_MOVE:
           {
-            console.log('selectionVisible ' + selectionVisible);
-            if (rectController.selection.selectionVisible) {
+            console.log('selectionVisible ' + rectController.selection.getSelectionVisible());
+            if (rectController.selection.getSelectionVisible()) {
+              resizeEnabled = rectController.selection.getSelectionPoint(templayer, x, y);
+            
               var item = canvas_util.selectShape(templayer, x, y);
               if (item != null && latestitem != null && latestitem instanceof Kinetic.Text) {
                 rectController.selection.hideRectSelection();
                 console.log('resize enabled');
-                // Decide how to do resizing, i.e. from which spot user started the resize
-                //var Y_Spot =;
-                var CONST_TOP_Y = 2;
-                var CONST_BOTTOM_Y = 1;
-                var CONST_CENTER_Y = 3;
-                 function Get_Y_Spot(y) {
-                  var retval = 0;
-                  if (canvas_util.isBetween(y, latestitem.getY() + latestitem.getHeight() - CONST_SELECTION_ITEM_SIZE, latestitem.getY() + latestitem.getHeight() + CONST_SELECTION_ITEM_SIZE) ) {                    
-                      retval = CONST_BOTTOM_Y;                  
-                  }
-
-                  if (canvas_util.isBetween(y, latestitem.getY() - CONST_SELECTION_ITEM_SIZE, latestitem.getY() + CONST_SELECTION_ITEM_SIZE) ) {                    
-                      retval = CONST_TOP_Y;                  
-                  }
-
-                  if (canvas_util.isBetween(y, latestitem.getY() + (latestitem.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, latestitem.getY() + (latestitem.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE) ) {                    
-                      retval = CONST_CENTER_Y;                  
-                  }
-                  
-                  return retval;
-                }
-                
-                // TODO: There's a more beautiful way of doing this
-                if (canvas_util.isBetween(x, latestitem.getX() - CONST_SELECTION_ITEM_SIZE, latestitem.getX() + CONST_SELECTION_ITEM_SIZE) ) {
-                  // Selection is on the left side
-                  switch (Get_Y_Spot(y)) {
-                    case CONST_BOTTOM_Y: {
-                       resizeEnabled = RESIZE_BOTTOM_LEFT;
-                       break;
-                    }
-                    case CONST_TOP_Y: {
-                       resizeEnabled = RESIZE_TOP_LEFT;  
-                      break;
-                    }
-                    case CONST_CENTER_Y: {
-                      resizeEnabled = RESIZE_LEFT_CENTER;
-                      break;
-                    }
-                  }
-                } else if (canvas_util.isBetween(x, latestitem.getX() + latestitem.getWidth() - CONST_SELECTION_ITEM_SIZE, latestitem.getX() + latestitem.getWidth() + CONST_SELECTION_ITEM_SIZE)) {
-                  // Selection is on the right side
-                  switch (Get_Y_Spot(y)) {
-                    case CONST_BOTTOM_Y: {
-                       resizeEnabled = RESIZE_BOTTOM_RIGHT;
-                       break;
-                    }
-                    case CONST_TOP_Y: {
-                       resizeEnabled = RESIZE_TOP_RIGHT;  
-                      break;
-                    }
-                    case CONST_CENTER_Y: {
-                      resizeEnabled = RESIZE_RIGHT_CENTER;
-                      break;
-                    }
-                  }
-                } else if (canvas_util.isBetween(x, latestitem.getX() + (latestitem.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, latestitem.getX() + (latestitem.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE) ) {
-                  // Selection is in the middle section
-                                    switch (Get_Y_Spot(y)) {
-                    case CONST_BOTTOM_Y: {
-                       resizeEnabled = RESIZE_BOTTOM_CENTER;
-                       break;
-                    }
-                    case CONST_TOP_Y: {
-                       resizeEnabled = RESIZE_TOP_CENTER;  
-                      break;
-                    }
-                  }
-                }
                 console.log('resize corner: ' + resizeEnabled);
               }
             }
@@ -431,7 +363,8 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
       }
       
       if (currentTool === TOOL_MOVE) {
-        rectController.selection.handleSelection(layer, templayer, x, y);        
+        rectController.selection.handleSelection(layer, templayer, x, y);
+        console.log('move ' + rectController.selection.getSelectionVisible());
       }
         
       if (drawing === true) {
@@ -604,10 +537,6 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
      });
   }
   
-  function SetCurrentFileName(filename) {
-    CurrentFileName = filename;  
-  }
-  
   function ToolBoxCallback(item) {
     currentTool = item;
     
@@ -637,14 +566,12 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
   init();
   
   return {
-    init: init,
     stage: stage,
     layer: layer,
     templayer: templayer,
     popupMenu_layer: popupMenu_layer,
     currenttool: currentTool,
     toolboxcallback: ToolBoxCallback,
-    loadfilecallback: LoadFile,
-    setcurrentfilename: SetCurrentFileName
+    loadfilecallback: LoadFile
   }
 });

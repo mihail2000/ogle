@@ -1,13 +1,26 @@
 define (['canvasUtil'], function(canvasUtil) {
 
+    var CONST_SELECTION_ITEM_SIZE = 6;
+    var CONST_TOP_Y = 2;
+    var CONST_BOTTOM_Y = 1;
+    var CONST_CENTER_Y = 3;
+
+    var RESIZE_TOP_LEFT = 1;
+    var RESIZE_TOP_CENTER = 2;
+    var RESIZE_TOP_RIGHT = 3;
+    var RESIZE_LEFT_CENTER = 4;
+    var RESIZE_RIGHT_CENTER = 5;
+    var RESIZE_BOTTOM_LEFT = 6;
+    var RESIZE_BOTTOM_CENTER = 7;
+    var RESIZE_BOTTOM_RIGHT = 8;
+    
     var resizeEnabled = false; // TRUE user is currently resizing an object, FALSE user is not resizing object currently
     var selectedObject = null; // Kinetic.Shape that is currently being selected / resized
-    var CONST_SELECTION_ITEM_SIZE = 6;
     var selectionVisible = false;
 
     function handleSelection(layer, templayer, x, y) {
       if (resizeEnabled != 0 && selectedObject != null) {
-        
+    //resizeBy
       } else {
         if (!Modernizr.touch) { // This type of selection only allowed for non-touch environments
           var item = null;
@@ -29,6 +42,7 @@ define (['canvasUtil'], function(canvasUtil) {
           // if the cursor is currently hovering on top
           if (item != null && item instanceof Kinetic.Text) {
             showRectSelection(templayer, item);
+            selectionVisible = true;
           } else if (item != null && item instanceof Kinetic.Line) {
             selectionVisible = true;
             templayer.removeChildren();
@@ -38,12 +52,11 @@ define (['canvasUtil'], function(canvasUtil) {
               drawSelectionElement(templayer, points[i].x - CONST_SELECTION_ITEM_SIZE, points[i].y - CONST_SELECTION_ITEM_SIZE, points[i].x + CONST_SELECTION_ITEM_SIZE, points[i].y + CONST_SELECTION_ITEM_SIZE);                   
             }
           } else {
-            selectionVisible = false;
-            templayer.removeChildren();
-            templayer.draw();
+            //selectionVisible = false;
+            //templayer.removeChildren();
+            //templayer.draw();
           }
         }
-        return selectedObject;
       }
     }
     
@@ -111,17 +124,93 @@ define (['canvasUtil'], function(canvasUtil) {
         drawSelectionElement(layer, rect.getX() + rect.getWidth() - CONST_SELECTION_ITEM_SIZE, rect.getY() + rect.getHeight() - CONST_SELECTION_ITEM_SIZE, rect.getX() + rect.getWidth() + CONST_SELECTION_ITEM_SIZE, rect.getY() + rect.getHeight() + CONST_SELECTION_ITEM_SIZE);
     }
     
-    
     function hideRectSelection(layer) {
         selectionVisible = false;
         layer.removeChildren();
         layer.draw();        
     }
+
+    function Get_Y_Spot(y, item) {
+        var retval = 0;
+        if (canvasUtil.isBetween(y, item.getY() + item.getHeight() - CONST_SELECTION_ITEM_SIZE, item.getY() + item.getHeight() + CONST_SELECTION_ITEM_SIZE) ) {                    
+            retval = CONST_BOTTOM_Y;                  
+        }
+        
+        if (canvasUtil.isBetween(y, item.getY() - CONST_SELECTION_ITEM_SIZE, item.getY() + CONST_SELECTION_ITEM_SIZE) ) {                    
+            retval = CONST_TOP_Y;                  
+        }
+        
+        if (canvasUtil.isBetween(y, item.getY() + (item.getHeight() / 2) - CONST_SELECTION_ITEM_SIZE, item.getY() + (item.getHeight() / 2) + CONST_SELECTION_ITEM_SIZE) ) {                    
+            retval = CONST_CENTER_Y;                  
+        }
+        return retval;
+    }
+
+    function getSelectionPoint(templayer, x, y) {
+        // Decide how to do resizing, i.e. from which spot user started the resize
+        //var Y_Spot =;
+        console.log('getSelectionPoint begin');
+        var resizeEnabled = 0;
+        
+        // TODO: There's a more beautiful way of doing this
+        if (canvasUtil.isBetween(x, selectedObject.getX() - CONST_SELECTION_ITEM_SIZE, selectedObject.getX() + CONST_SELECTION_ITEM_SIZE) ) {
+          // Selection is on the left side
+          switch (Get_Y_Spot(y, selectedObject)) {
+            case CONST_BOTTOM_Y: {
+               resizeEnabled = RESIZE_BOTTOM_LEFT;
+               break;
+            }
+            case CONST_TOP_Y: {
+               resizeEnabled = RESIZE_TOP_LEFT;  
+              break;
+            }
+            case CONST_CENTER_Y: {
+              resizeEnabled = RESIZE_LEFT_CENTER;
+              break;
+            }
+          }
+        } else if (canvasUtil.isBetween(x, selectedObject.getX() + selectedObject.getWidth() - CONST_SELECTION_ITEM_SIZE, selectedObject.getX() + selectedObject.getWidth() + CONST_SELECTION_ITEM_SIZE)) {
+          // Selection is on the right side
+          switch (Get_Y_Spot(y, selectedObject)) {
+            case CONST_BOTTOM_Y: {
+               resizeEnabled = RESIZE_BOTTOM_RIGHT;
+               break;
+            }
+            case CONST_TOP_Y: {
+               resizeEnabled = RESIZE_TOP_RIGHT;  
+              break;
+            }
+            case CONST_CENTER_Y: {
+              resizeEnabled = RESIZE_RIGHT_CENTER;
+              break;
+            }
+          }
+        } else if (canvasUtil.isBetween(x, selectedObject.getX() + (selectedObject.getWidth() / 2) - CONST_SELECTION_ITEM_SIZE, selectedObject.getX() + (selectedObject.getWidth() / 2) + CONST_SELECTION_ITEM_SIZE) ) {
+          // Selection is in the middle section
+            switch (Get_Y_Spot(y, selectedObject)) {
+            case CONST_BOTTOM_Y: {
+               resizeEnabled = RESIZE_BOTTOM_CENTER;
+               break;
+            }
+            case CONST_TOP_Y: {
+               resizeEnabled = RESIZE_TOP_CENTER;  
+              break;
+            }
+          }
+        }
+        
+        return resizeEnabled;
+    }
+    
+    function getSelectionVisible() {
+        return selectionVisible;
+    }
  
 
 return {
     handleSelection: handleSelection,
-    selectionVisible: selectionVisible
+    getSelectionVisible: getSelectionVisible,
+    getSelectionPoint: getSelectionPoint
 }
 
 

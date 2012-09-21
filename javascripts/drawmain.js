@@ -14,7 +14,6 @@ window.onload = function() {
         var fileparameter = window.location.search.replace('?filename=', '' );        
         fileNameBar.init(fileparameter);
         toolbox.setcallback(canvas_handler.toolboxcallback);
-        canvas_handler.setcurrentfilename(fileparameter);
         dropbox_handler.authenticate();
         dropbox_handler.loadcontents(fileparameter, canvas_handler.loadfilecallback);
     });

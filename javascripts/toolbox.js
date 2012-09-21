@@ -9,8 +9,8 @@ define (function() {
     // TOOLBOX_CONSTS: Model of MVC pattern. Defines button captions and their respective ids (id being a unique 'name' for the button).
     // Related IDS and LABELS must be in a same array index in order to things work.
     var TOOLBOX_CONSTS = {
-        TOOLBUTTONS_IDS: ['load', 'save', 'select', 'move', 'rect', 'arrow', 'settext', 'delete', 'color'], 
-        TOOLBUTTON_LABELS: ['Load', 'Save', 'Select', 'Move', 'Rect', 'Arrow', 'Text', 'Delete', 'Color']
+        TOOLBUTTONS_IDS: ['load', 'save', 'select', 'move', 'rect', 'line', 'settext', 'delete', 'color'], 
+        TOOLBUTTON_LABELS: ['Load', 'Save', 'Select', 'Move', 'Rect', 'Line', 'Text', 'Delete', 'Color']
     };
     
     var toolbox_obj = {
