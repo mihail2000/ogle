@@ -14,7 +14,7 @@ define (['canvasUtil'], function(canvasUtil) {
     var RESIZE_BOTTOM_CENTER = 7;
     var RESIZE_BOTTOM_RIGHT = 8;
     
-    var resizeEnabled = false; // TRUE user is currently resizing an object, FALSE user is not resizing object currently
+    var resizeEnabled = false; // != 0 user is currently resizing an object. Value defines the corner where resizing takes place. 0 = user is not resizing object currently
     var selectedObject = null; // Kinetic.Shape that is currently being selected / resized
     var selectionVisible = false;
     
@@ -127,7 +127,18 @@ define (['canvasUtil'], function(canvasUtil) {
           item.setX(newX);
           item.setY(newY);        
       } else if (item instanceof Kinetic.Line) {
+        var points = item.getPoints();
+        var newPoints = [];
         
+        for (var i = 0; i < points.length; i++) {
+            newPoints.push(points[i]);
+            if (i == resizeEnabled) {
+                newPoints.x = x;
+                newPoints.y = y;
+            }
+        }
+        item.setPoints(newPoints);
+          
       }
         layer.draw();
     }

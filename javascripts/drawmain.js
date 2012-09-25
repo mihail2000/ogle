@@ -14,8 +14,13 @@ window.onload = function() {
         var fileparameter = window.location.search.replace('?filename=', '' );        
         fileNameBar.init(fileparameter);
         toolbox.setcallback(canvas_handler.toolboxcallback);
-        dropbox_handler.authenticate();
-        dropbox_handler.loadcontents(fileparameter, canvas_handler.loadfilecallback);
+        
+        if (fileparameter != '') {
+            dropbox_handler.authenticate();
+            dropbox_handler.loadcontents(fileparameter, canvas_handler.loadfilecallback);
+        } else {
+            canvas_handler.initEmptyCanvas();
+        }
     });
 
   var elem;

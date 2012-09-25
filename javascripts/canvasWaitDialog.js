@@ -1,5 +1,5 @@
 define (function() {
-    var CONST_WAIT_TEXT = 'Loading'; // Text displayed on the dialog
+    var baseWaitText = 'Loading'; // Text displayed on the dialog
     var CONST_TEXT_COLOR = '#ffffff'; // Wait text color
     var CONST_MAX_CYCLES = 3; // Maximum number of dots to be displayed after CONST_WAIT_TEXT
     
@@ -10,12 +10,11 @@ define (function() {
   
     function updateLoading() {
         cycle++;
-        
         if (cycle > CONST_MAX_CYCLES) {
           cycle = 1;
         }
         
-        txt = CONST_WAIT_TEXT;
+        txt = baseWaitText;
         for (var i = 0; i < cycle; i++) {
           txt += '.';
         }
@@ -24,7 +23,7 @@ define (function() {
         drawToLayer.draw();
     }
     
-    function showWaitDialog(kineticLayer) {
+    function showWaitDialog(kineticLayer, waitText) {
         drawToLayer = kineticLayer;        
         kineticText = new Kinetic.Text({
         x: 100,
@@ -40,9 +39,11 @@ define (function() {
         cornerRadius: 0,
         padding: 20,
         align: 'left',
-        text: 'Loading'
+        text: waitText
         });
+        baseWaitText = waitText;
         // add the shape to the layer
+        drawToLayer.setZIndex(999);
         drawToLayer.add(kineticText);
         drawToLayer.draw();
         

@@ -22,9 +22,12 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
   var RESIZE_BOTTOM_RIGHT = 8;
   
   var stage = null;
-  var layer = new Kinetic.Layer();
-  var templayer = new Kinetic.Layer();
-  var popupMenu_layer = new Kinetic.Layer();
+  var layer = null; 
+  var templayer = null;
+  var popupMenu_layer = null;
+  var waitDialogLayer = new Kinetic.Layer({id: 'waitDialogLayer'});
+  
+  
   var currentTool = '';
   var drawing = false;
   var latestitem = null;
@@ -79,6 +82,7 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
   }
     
   function changeDragDrop(changeval) {
+    console.log(layer);
     var shapes = layer.getChildren();
     for (var i = 0; i < shapes.length; i++)
     {
@@ -289,18 +293,46 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
       }
     }
     
+    var progressval = 0;
+    var progressID = 0;
+    var progressDirection = 10;
+    
+    function progressBarUpdate() {
+      progressval+=progressDirection;
+      if (progressval > 100) {
+        progressDirection = -10;
+      } else if (progressval < 10) {
+        progressDirection = 10;
+      }
+ 
+      $( "#progressbar" ).progressbar({
+              value: progressval
+      });
+      $("#progressbar").show();
+      $("#progressdiv").show();
+
+    }
     function savefilecallback(error, stat) {
-     
+      clearInterval(progressID);
+      
+      $("#progressbar").hide();
+      $("#progressdiv").hide();
+      
     }
     
     function SaveFile(kineticLayer) {
-      
-      var writeToFile = '';
-      var shapes = kineticLayer.getChildren();
-      
-      var xmlConverter = new shapeToXML();
-      writeToFile = xmlConverter.convertToXML(shapes);
 
+      progressDirection = 10;
+      progressval = 0;
+      progressID = setInterval(progressBarUpdate, 100);
+    
+      var writeToFile = '';
+      //var shapes = kineticLayer.getChildren();
+      
+      //var xmlConverter = new shapeToXML();
+      //writeToFile = xmlConverter.convertToXML(shapes);
+      writeToFile = stage.toJSON();
+      
       if (writeToFile != '') {
         //require(['dropbox_handler'], function(dropbox_handler) {
             dropbox_handler.authenticate();
@@ -308,65 +340,33 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
         //});    
       }
 
+      
     }
     
     function LoadFile(error, data) {
-      $(data).find('shape').each(function () {
-        switch ($(this).attr('type')) {
-          case TOOL_RECT:
-            {
-              console.log('RECT');
-              var x = parseInt($(this).attr('x'));
-              var y = parseInt($(this).attr('y'));
-              var width = parseInt($(this).attr('width'));
-              var height = parseInt($(this).attr('height'));
-              var fill = $(this).attr('fill');
-              var text = '';
-              if ($(this).text() != '') {
-                text = $(this).text();
-              }
-              latestItem = rectController.drawRectElement(layer, x, y, x + width, y + height, text, fill);
-              break;
-            }
-          
-          case TOOL_ARROW:
-            {
-              console.log('ARROW');
-              var points = [];
-              $(this).find('coord').each(function () {
-                points.push(parseInt($(this).attr('x')));
-                points.push(parseInt($(this).attr('y')));
-              });
-              arrowController.drawLineElement(layer, points);
-              break;
-            }
-        }
-      });
+      console.log('LoadFile error: ' + error);
+      if (error == null) {
+        console.log(data);
+        var json = '{"attrs":{"width":578,"height":200,"throttle":80,"visible":true,"listening":true,"alpha":1,"x":0,"y":0,"scale":{"x":1,"y":1},"rotation":0,"offset":{"x":0,"y":0},"dragConstraint":"none","dragBounds":{},"draggable":false},"nodeType":"Stage","children":[{"attrs":{"throttle":80,"clearBeforeDraw":true,"visible":true,"listening":true,"alpha":1,"x":0,"y":0,"scale":{"x":1,"y":1},"rotation":0,"offset":{"x":0,"y":0},"dragConstraint":"none","dragBounds":{},"draggable":false},"nodeType":"Layer","children":[{"attrs":{"radius":70,"sides":6,"detectionType":"path","visible":true,"listening":true,"alpha":1,"x":289,"y":100,"scale":{"x":1,"y":1},"rotation":0,"offset":{"x":0,"y":0},"dragConstraint":"none","dragBounds":{},"draggable":false,"fill":"red","stroke":"black","strokeWidth":4},"nodeType":"Shape","shapeType":"RegularPolygon"}]}]}';
+        stage.load(data);
+        
+        layer = stage.get('#layer')[0];
+        templayer = stage.get('#templayer')[0];
+        popupMenu_layer = stage.get('#popupmenulayer')[0];
+        
+        initControllers();
+        
+      }
       canvasWaitDialog.hideWaitDialog();
       latestitem = null;
 
     }
-  
-  function init() {
-    stage = new Kinetic.Stage({
-      container: "container",
-      x: 0,
-      y: 0,
-      width: 1240,
-      height: 600
-    });
-    // add the layer to the stage
-    stage.add(layer);
-    stage.add(templayer);
-    stage.add(popupMenu_layer);
-    
-    canvasWaitDialog.showWaitDialog(templayer);
-    
+ 
+  function initControllers() {
     // TODO: Implement LoadControllers in a separate javascript file. Ideally this would be something that can be changed without touching this particular class.
     controllers.push(selectionController);
     controllers.push(rectController);
     controllers.push(arrowController);
-    
     
     var el = document.getElementById('container');
     if (Modernizr.touch) {
@@ -378,8 +378,39 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
       el.addEventListener('mouseup', function(event) { drawEndHandler(event); });    
       el.addEventListener('mousemove', function(event) { drawMoveHandler(event); });    
     }
-    document.addEventListener('keydown', function(event) { keyDownHandler(event); });
+    document.addEventListener('keydown', function(event) { keyDownHandler(event); });    
     
+  }
+  
+  function initEmptyCanvas() {
+    // add the layer to the stage
+    
+    layer = new Kinetic.Layer({id: 'layer'});
+    templayer = new Kinetic.Layer({id: 'templayer'});
+    popupMenu_layer = new Kinetic.Layer({id: 'popupmenulayer'});
+    stage.add(layer);
+    stage.add(templayer);
+    stage.add(popupMenu_layer);
+    
+    initControllers();
+    
+    canvasWaitDialog.hideWaitDialog();
+
+  }
+  
+  function init() {
+    stage = new Kinetic.Stage({
+      container: "container",
+      x: 0,
+      y: 0,
+      width: 1240,
+      height: 600
+    });
+    
+    stage.add(waitDialogLayer);
+    canvasWaitDialog.showWaitDialog(waitDialogLayer, 'Loading');
+    $("#progressdiv").hide();
+
     $('#radio9').ColorPicker({
      color: '#0000ff',
      onShow: function (colpkr) {
@@ -435,6 +466,7 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
     popupMenu_layer: popupMenu_layer,
     currenttool: currentTool,
     toolboxcallback: ToolBoxCallback,
-    loadfilecallback: LoadFile
+    loadfilecallback: LoadFile,
+    initEmptyCanvas: initEmptyCanvas
   }
 });

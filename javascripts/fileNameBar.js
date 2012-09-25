@@ -7,6 +7,7 @@
 define (function() {
 
     var CONST_UNTITLED_FILE = 'Untitled';
+    var CONST_FILE_EXTENSION = '.json';
     var _originalFileName = ''; // We should save the original filename, so we know what file to delete when user changes the name.
     var _fileName = '';
     
@@ -27,7 +28,7 @@ define (function() {
         $('#filename').click(function() {
             var newFileName = prompt('Please enter filename', getFileNameWOExtension(_fileName));
             if (newFileName != null && newFileName != ''){
-                _fileName = newFileName + '.xml';
+                _fileName = newFileName + CONST_FILE_EXTENSION;
                 displayFileName();
               }    
         });
@@ -42,7 +43,7 @@ define (function() {
     }
     
     function getFileNameWOExtension(fileName) {
-        var idx = fileName.search('.xml');
+        var idx = fileName.search(CONST_FILE_EXTENSION);
         var displayFileName = ''
         if (idx == -1) {
             displayFileName = fileName;
