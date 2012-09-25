@@ -9,13 +9,13 @@
     <link rel="stylesheet" media="screen" type="text/css" href="javascripts/lib/colorpicker/css/colorpicker.css" />
 
     <style>
-      body { background-color:#ffffff;}
+      body { background-color:#ffffff; background-image: -webkit-linear-gradient(bottom left, #FFFFFF 0%, #8B98A3 100%);}
       h2 { color:#11aa00; font-family:"Sans-serif", Verdana, Arial; font-weight:normal; }
       h3 { color:#11aa00; font-family:"Sans-serif", Verdana, Arial; font-weight:normal; }
       p { color:#000000; font-family:"Sans-serif", Verdana, Arial; line-height:50%; }
       div#radio { font-family: "Sans-serif"; font-size: x-small; color: #dddddd; }
       div#filename { font-family: "Sans-serif", Verdana; font-size: large; color: #000000; }
-      
+
     </style>
     <script>      
       $(document).keydown(function(e) {
@@ -29,10 +29,10 @@
     </script>
    </head>
   <body onSelectStart="this.style.cursor='crosshair'; return false;"onMouseup="this.style.cursor='default'">
-  <p><div id="filename"></div></p>
+  <div id="filename"></div>
+  <div id="radio"></div>
   <div id="progressdiv"><table width="400"><tr height="10"><th id="progressbar"></th></tr></table></div>
-  <div id="radio"></div><p></p>
-  <div id="colorchooser"></div>
+  <p><div id="colorchooser"></div></p>
   <div id="container"></div><p></p>
   </body>
 </html>

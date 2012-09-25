@@ -10,7 +10,17 @@ TBD
 
 ## Development
 
-TBD
+TODO:
+- User selectable canvas size
+- Do not connect to Dropbox until user specifically asks
+- Saving to somewhere else than Dropbox
+- Images
+- Ellipses
+- New toolbar look&feel with icons
+-- Toolbar with different type of shapes
+- Variations of basic shapes (different type of rounded corners etc.)
+- Zooming
+- Connectors
 
 ## Copyright and License
 
