@@ -12,6 +12,7 @@ TBD
 
 TODO:
 - User selectable canvas size
+- Support for multple pages
 - Do not connect to Dropbox until user specifically asks
 - Saving to somewhere else than Dropbox
 - Images

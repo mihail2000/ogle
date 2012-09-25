@@ -19,7 +19,7 @@ define (function() {
     function init(fileName) {
         var sFileName = fileName;
         _originalFileName = fileName;
-        if (sFileName == '') {
+        if (sFileName == '' || sFileName == undefined) {
             sFileName = CONST_UNTITLED_FILE;
         }
         _fileName = sFileName;        

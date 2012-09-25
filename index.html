@@ -3,21 +3,31 @@
   <head>
     <meta charset="utf-8">
     <script data-main="javascripts/main" src="javascripts/lib/require-jquery.js"></script>
+    <script type="text/javascript" src="javascripts/lib/jquery-ui-1.8.23.custom.min.js"></script>
+    <link type="text/css" rel="Stylesheet" href="stylesheets/jquery-ui-1.8.23.custom.css">
     <style>
       body { background-color:#ffffff; font-family:"Sans-serif", Verdana, Arial; font-size: small;}
       h2 { color:#11aa00; font-family:"Sans-serif", Verdana, Arial; font-weight:normal; }
       h3 { color:#11aa00; font-family:"Sans-serif", Verdana, Arial; font-weight:normal; }
       p { color:#000000; font-family:"Sans-serif", Verdana, Arial; line-height:50%; }
+      div#errors { color:#ff0000; font-family:"Sans-serif", Verdana, Arial; line-height:50%; }
     </style>
   </head>
-
   <body>
     <h1>OGLE</h1>
     Powered by:<br>
     <a href="http://www.dropbox.com"><img src="img/DropboxLogo.png"></a><p></p><br><br>
-
-    <a href="drawscreen.html">New diagram</a><p></p>
-    Load previous:
-    <div id='loading'><h3>Fetching contents...</h3></div>
+    <div id="newdiagram">
+      <button id="new">New diagram</button><br><br>
+    </div>
+    <form>
+      Width <input type="text" id="width" name="width" value="1280">
+      Height: <input type="text" id="height" name="height" value="600">
+    </form><br>
+    <div id="errors"></div>
+    <br>
+    <div id='recent'><button id="load">Open recent</button></div>
+    <div id='loading'></div>
+    <div id='recentfiles'></div>
   </body>
 </html>
