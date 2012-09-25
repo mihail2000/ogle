@@ -142,9 +142,6 @@ define (['canvasUtil'], function(canvasUtil) {
       }
         layer.draw();
     }
-
-
-
         
     function drawSelectionElement(drawtolayer, startx, starty, endx, endy, text) {
       var rectx = 0;
@@ -312,7 +309,6 @@ define (['canvasUtil'], function(canvasUtil) {
               item = canvasUtil.selectShape(layer, x, y);                  
             }
           
-            //changeDragDrop(false);
             selectedObject = item;
             // if the cursor is currently hovering on top
             if (selectedObject != null && selectedObject instanceof Kinetic.Text) {
@@ -369,7 +365,8 @@ return {
     moveEvent: moveEvent,
     endEvent: endEvent,
     keyDownEvent: null,
-    getId: getId    
+    getId: getId,
+    showRectSelection: showRectSelection
 }
 
 

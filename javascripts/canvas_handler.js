@@ -137,13 +137,11 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
       switch (currentTool) {
         case TOOL_SELECT:
           {
-            //var item = canvas_util.selectShape(layer, x, y);
-            //if (item != null) {
-             // itemSelected = item;
-              itemSelected = rectController.selection.handleSelection(layer, templayer, x, y);    
-             // displaySelection(item);  
-            //}
-            
+            var item = canvas_util.selectShape(layer, x, y);
+            if (item != null) {
+              itemSelected = item;
+              selectionController.showRectSelection(templayer, itemSelected);
+            }
 
            /* 
             if (!popupMenu.visible) {
@@ -251,47 +249,47 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
     }
   }
     
-    function keyDownHandler(event) {
-      if (text_edit_shape != null) {
-        switch (event.keyCode) {
-          
-          case 13: // enter
-            {
-              text_edit_shape.setText(text_edit_string);
-              text_edit_shape.setFill('#aaaaaa');
-              layer.draw();
-              clearInterval(cursorTimerID); 
-              text_edit_shape = null;                
-              break;
-            }
-            
-          case 8: // backspace
-            {
-              var currentString = text_edit_string;
-              if (currentString.length > 1) {
-                var newString = currentString.substr(0, currentString.length - 1);
-                text_edit_string = newString;
-              } else {
-                text_edit_string = '';
-              }
-              text_edit_shape.setText(text_edit_string);
-              layer.draw();                                 
-              break;
-            }
-    
-        default:
+  function keyDownHandler(event) {
+    if (text_edit_shape != null) {
+      switch (event.keyCode) {
+        
+        case 13: // enter
           {
-            var currentString = text_edit_string;              
-            var character = String.fromCharCode(event.keyCode);
-            var newString = currentString.concat(character);
-            text_edit_string = newString.toLowerCase();
             text_edit_shape.setText(text_edit_string);
+            text_edit_shape.setFill('#aaaaaa');
             layer.draw();
+            clearInterval(cursorTimerID); 
+            text_edit_shape = null;                
             break;
           }
+          
+        case 8: // backspace
+          {
+            var currentString = text_edit_string;
+            if (currentString.length > 1) {
+              var newString = currentString.substr(0, currentString.length - 1);
+              text_edit_string = newString;
+            } else {
+              text_edit_string = '';
+            }
+            text_edit_shape.setText(text_edit_string);
+            layer.draw();                                 
+            break;
+          }
+  
+      default:
+        {
+          var currentString = text_edit_string;              
+          var character = String.fromCharCode(event.keyCode);
+          var newString = currentString.concat(character);
+          text_edit_string = newString.toLowerCase();
+          text_edit_shape.setText(text_edit_string);
+          layer.draw();
+          break;
         }
       }
     }
+  }
     
     var progressval = 0;
     var progressID = 0;
