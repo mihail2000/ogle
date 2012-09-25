@@ -17,19 +17,20 @@ window.onload = function() {
         var newParam = qs['newdiagram'];
         var width = qs['width'];
         var height = qs['height'];
-        
+        if (width == undefined || height == undefined) {
+            width = 800;
+            height = 600;
+        }
+
         fileNameBar.init(fileparameter);
         toolbox.setcallback(canvas_handler.toolboxcallback);
+        canvas_handler.init(width, height);
         
         if (fileparameter != undefined) {
             dropbox_handler.authenticate();
             dropbox_handler.loadcontents(fileparameter, canvas_handler.loadfilecallback);
         } else {
-            if (width == undefined || height == undefined) {
-                width = 1200;
-                height = 800;
-            }
-            canvas_handler.initEmptyCanvas(width, height);
+            canvas_handler.initEmptyCanvas();
         }
     });
 

@@ -396,13 +396,13 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
 
   }
   
-  function init() {
+  function init(w, h) {
     stage = new Kinetic.Stage({
       container: "container",
       x: 0,
       y: 0,
-      width: 1240,
-      height: 600
+      width: w,
+      height: h
     });
     
     stage.add(waitDialogLayer);
@@ -455,7 +455,7 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
     }
   }
   
-  init();
+  //init();
   
   return {
     stage: stage,
@@ -465,6 +465,7 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
     currenttool: currentTool,
     toolboxcallback: ToolBoxCallback,
     loadfilecallback: LoadFile,
-    initEmptyCanvas: initEmptyCanvas
+    initEmptyCanvas: initEmptyCanvas,
+    init: init
   }
 });
