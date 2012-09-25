@@ -3,12 +3,15 @@ require(['dropbox_handler'], function(dropbox_handler) {
     function getDropboxFiles() {
         $('#load').button('disable');
         $('#recentfiles').empty();
+        $('#loading').show();
         $('#loading').append('<h3>Fetching contents...</h3>');
         
         dropbox_handler.authenticate();
         dropbox_handler.readdir('/', function(error, entries) {
             if (error) {
                 $('#load').button('enable');
+                $('#loading').empty();
+                $('#loading').hide();
                 return dropbox_handler.error_handler(error);
             }
     
@@ -16,6 +19,7 @@ require(['dropbox_handler'], function(dropbox_handler) {
                 $('#recentfiles').append('<br><a href="drawscreen.html?filename=' + entries[i] + '">' + entries[i]);
             }
         $('#load').button('enable');
+        $('#loading').empty();
         $('#loading').hide();
 
         });
