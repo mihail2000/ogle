@@ -89,41 +89,36 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
       shapes[i].setDraggable(changeval);
     }
   }
-    /*
-     * getControllerById
-     *
-     * Retrieves a canvas controller class based on the given id.
-     * Id represents the currently selected tool (drawing, selection, moving etc.)
-     *
-     * Parameters:
-     *  id - id of the controller to be retrieved
-     *
-     * Returns:
-     *  Controller object with the given id
-     */
-    function getControllerById(id) {
-      var controller = null;
-      for (var i = 0; i < controllers.length; i++) {
-        controller = controllers[i];
-        if (controller.getId() === id) {
-          return i;
-        }
+  
+  /*
+   * getControllerById
+   *
+   * Retrieves a canvas controller class based on the given id.
+   * Id represents the currently selected tool (drawing, selection, moving etc.)
+   *
+   * Parameters:
+   *  id - id of the controller to be retrieved
+   *
+   * Returns:
+   *  Controller object with the given id
+   */
+  function getControllerById(id) {
+    var controller = null;
+    for (var i = 0; i < controllers.length; i++) {
+      controller = controllers[i];
+      if (controller.getId() === id) {
+        return i;
       }
-      return null; // Should never occur if used as should.
     }
+    return null; // Should never occur if used as should.
+  }
 
   function drawDownHandler(event) {
     var x = 0;
     var y = 0;
-
-    if (Modernizr.touch) {
-      x = event.pageX;
-      y = event.pageY;
-    } else {
-      var relativecoord = getRelativeCoords(event);
-      x = relativecoord.x;
-      y = relativecoord.y;
-    }
+    var relativecoord = getRelativeCoords(event);
+    x = relativecoord.x;
+    y = relativecoord.y;
 
     var controller = controllers[getControllerById(currentTool)];
     if (controller != null) {
@@ -205,25 +200,9 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
   function drawEndHandler(event) {
     var x = 0;
     var y = 0;
-
-    if (Modernizr.touch) {
-      x = event.pageX;
-      y = event.pageY;
-    } else {
-      var relativecoord = getRelativeCoords(event);
-      x = relativecoord.x;
-      y = relativecoord.y;
-    }
-
-    /*if (drawing) {
-      if (!Modernizr.touch) {
-        var relativecoord = getRelativeCoords(event);
-        draw_end_x = relativecoord.x;
-        draw_end_y = relativecoord.y;  
-      }
-      
-    }
-*/
+    var relativecoord = getRelativeCoords(event);
+    x = relativecoord.x;
+    y = relativecoord.y;
     var controller = controllers[getControllerById(currentTool)];
     if (controller != null) {
       controller.endEvent(layer, templayer, x, y);
@@ -233,15 +212,9 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
   function drawMoveHandler(event) {
     var x = 0;
     var y = 0;
-    
-    if (Modernizr.touch) {
-      x = event.pageX;
-      y = event.pageY;          
-    } else {
-      var relativecoord = getRelativeCoords(event);
-      x = relativecoord.x;
-      y = relativecoord.y;  
-    }
+    var relativecoord = getRelativeCoords(event);
+    x = relativecoord.x;
+    y = relativecoord.y;
     
     var controller = controllers[getControllerById(currentTool)];
     if (controller != null) {
@@ -368,7 +341,7 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
     
     var el = document.getElementById('container');
     if (Modernizr.touch) {
-      el.addEventListener('touchstart', function(event) { drawHandler(event); });    
+      el.addEventListener('touchstart', function(event) { drawDownHandler(event); });    
       el.addEventListener('touchend', function(event) { drawEndHandler(event); });    
       el.addEventListener('touchmove', function(event) { drawMoveHandler(event); });    
     } else {
@@ -429,10 +402,73 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
      });
   }
   
+  function toolCategory(layer) {
+    
+    var x = 150;
+    var y = 0;
+    var width = 100;
+    var height = 100;
+    var itemWidth = 25;
+    var itemHeight = 25;
+    
+    var borders = new Kinetic.Rect({
+      x: x,
+      y: y,
+      width: width,
+      height: height,
+      fill: '#ffffff',
+      stroke: 'blue',
+      strokeWidth: 1,
+      cornerRadius: 5,
+      shadow: {
+        color: 'black',
+        blur: 1,
+        offset: [5, 5],
+        opacity: 0.2
+      }
+      });
+    layer.add(borders);
+    
+    var objects = [];
+    
+    var object = {x: x+10, y: y+10, width: itemWidth, height: itemHeight, fill: '#aaaaaa', stroke: 'blue', strokeWidth: 1, cornerRadius: 0,
+      shadow: {
+        color: 'black',
+        blur: 1,
+        offset: [5, 5],
+        opacity: 0.2
+      }};
+    
+    var tempObject = new Kinetic.Rect(object);
+    layer.add(tempObject);
+
+    object = {x: x + (10 * 2) + (itemWidth), y: y+10, width: itemWidth, height: itemHeight, fill: '#aaaaaa', stroke: 'blue', strokeWidth: 1, cornerRadius: 5,
+      shadow: {
+        color: 'black',
+        blur: 1,
+        offset: [5, 5],
+        opacity: 0.2
+      }};
+    
+    tempObject = new Kinetic.Rect(object);
+    layer.add(tempObject);
+    
+    layer.draw();
+    
+  }
+  
   function ToolBoxCallback(item) {
     currentTool = item;
     
     switch (item) {
+      case TOOL_RECT: {
+        toolCategory(templayer);  
+        
+        
+        
+        break;
+      }
+      
       case TOOL_SAVE: {
           SaveFile(layer);
         break;
