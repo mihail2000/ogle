@@ -10,7 +10,6 @@ define (function() {
     var CONST_FILE_EXTENSION = '.json';
     var _originalFileName = ''; // We should save the original filename, so we know what file to delete when user changes the name.
     var _fileName = '';
-    
     /*
      * init
      *
