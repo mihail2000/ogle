@@ -463,9 +463,6 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
     switch (item) {
       case TOOL_RECT: {
         toolCategory(templayer);  
-        
-        
-        
         break;
       }
       
@@ -490,9 +487,6 @@ define (['dropbox_handler', 'canvasUtil', 'popupMenu', 'fileNameBar', 'canvasWai
       }
     }
   }
-  
-  //init();
-  
   return {
     stage: stage,
     layer: layer,
