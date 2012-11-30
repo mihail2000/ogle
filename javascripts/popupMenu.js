@@ -7,6 +7,8 @@ define (['canvasUtil'], function(canvasUtil) {
   var selectedCallBack = null;
   
   /*
+   * 
+   * Adding some new stuff here
   function selectMenuAction(menuLayer, x, y) {
       if (selected_shape != null) {
         var selecteditem = canvasUtil.selectShape(menuLayer, x, y);
